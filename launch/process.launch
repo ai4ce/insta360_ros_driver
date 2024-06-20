@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="post_processing" pkg="insta360_ros_driver" type="postprocess.py" output="screen"/>
+</launch>

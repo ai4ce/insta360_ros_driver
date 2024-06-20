@@ -1,0 +1,10 @@
+bag_raw/*
+bag_processed/*
+lib/*
+include/*
+.vscode
+
+!bag_raw/.gitkeep
+!bag_processed/.gitkeep
+!lib/.gitkeep
+!include/.gitkeep

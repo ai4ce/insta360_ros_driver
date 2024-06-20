@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="rviz" default="true"/>
+    <arg name="get_images" default="false"/>
+    <node name="raw_output" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
+    <node name="live_processing" pkg="insta360_ros_driver" type="live_processing.py" output="screen"/>
+
+    <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find insta360_ros_driver)/config/preview.rviz" output="screen"/>
+
+    <node if="$(arg get_images)" name="get_images" pkg="insta360_ros_driver" type="get_images.py" output="screen"/>
+</launch>
