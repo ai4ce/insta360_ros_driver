@@ -20,15 +20,6 @@ def undistort_image(image, K, D):
     undistorted_img = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR)
     return undistorted_img
 
-def undistort_image_classic(img, mtx, dist):
-    h, w = img.shape[:2]
-    newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),0,(w,h))
-    dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
-    x,y,w,h = roi
-    dst = dst[y:y+h, x:x+w]
-    return dst
-
-
 def compress_image_to_msg(image, timestamp):
     _, buffer = cv2.imencode('.jpg', image)
     image_msg = CompressedImage()
@@ -37,36 +28,22 @@ def compress_image_to_msg(image, timestamp):
     image_msg.data = buffer.tobytes()
     return image_msg
 
-#X2 Parameters
-# mtx = np.array([[795.02, 0.0, 873.05],
-#              [0.0, 795.3, 836.3],
-#              [0.0, 0.0, 1.0]])
-
-# dist = np.array([-0.13020864, -0.0165325 ,  0.01075378,  0.00457717,  0.00664401])
-
-undistort=True
-
-K = np.array([[568.6654432377414, 0.0, 955.6883006362993], 
-     [0.0, 569.6599355654018, 961.1454179184642], 
-     [0.0, 0.0, 1.0]])
-
-D = np.array([[0.03864975643881084], [0.00799517789050036], [-0.008943738947933197], [0.0006243938707961845]])
-
-
-#Air Parameters
-# K = np.array([[473, 0.0, 752], 
-#               [0.0, 473, 752], 
-#               [0.0, 0.0, 1.0]])
-# D = np.array([-0.020286852335397013, -0.007, 0.005, -0.003])
-
 class LiveProcessing():
     def __init__(self):
-        rospy.init_node('compression_node')
+        rospy.init_node('live_processing_node')
         self.bridge = CvBridge()
+        
+        self.topic_name = rospy.get_param("topic_name", '/insta_image_yuv')
+        self.is_yuv = rospy.get_param("is_yuv", True)
+        self.is_compressed = rospy.get_param("is_compressed", False)
+        self.undistort = rospy.get_param("/undistort", False)
+        self.K = np.asarray(rospy.get_param("K"))
+        self.D = np.asarray(rospy.get_param("D"))
 
-        self.image_sub = rospy.Subscriber('insta_image_yuv', Image, self.processing)
+        self.image_sub = rospy.Subscriber(self.topic_name, Image, self.processing)
         self.front_image_pub = rospy.Publisher('front_camera_image/compressed', CompressedImage, queue_size=10)
         self.back_image_pub = rospy.Publisher('back_camera_image/compressed', CompressedImage, queue_size=10)
+
 
     def processing(self, msg):
         try:
@@ -75,7 +52,6 @@ class LiveProcessing():
 
             # Convert the YUV image to BGR format
             bgr_image = cv2.cvtColor(image, cv2.COLOR_YUV2BGR_I420)
-
             # Assuming the image is horizontally split for Front | Back
             height, width = bgr_image.shape[:2]
             mid_point = width // 2
@@ -89,12 +65,9 @@ class LiveProcessing():
             # Rotate back image 90 degrees counterclockwise
             back_image = cv2.rotate(back_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-            if(undistort):
-                front_image = undistort_image(front_image, K, D)
-                back_image = undistort_image(back_image, K, D)
-
-                # front_image = undistort_image_classic(front_image, mtx, dist)
-                # back_image = undistort_image_classic(back_image, mtx, dist)
+            if(self.undistort):
+                front_image = undistort_image(front_image, self.K, self.D)
+                back_image = undistort_image(back_image, self.K, self.D)
 
             front_compressed_msg = compress_image_to_msg(front_image, msg.header.stamp)
             back_compressed_msg = compress_image_to_msg(back_image, msg.header.stamp)

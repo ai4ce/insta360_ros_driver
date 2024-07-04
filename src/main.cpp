@@ -12,6 +12,7 @@
 #include "stream/stream_types.h"
 
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <std_msgs/String.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -111,8 +112,6 @@ public:
                     // Copy the V plane
                     memcpy(yuv.data + width * height + chromaWidth * chromaHeight, avFrame->data[2], chromaWidth * chromaHeight);
                     
-                    // cv::cvtColor(yuv, yuv, cv::COLOR_YUV2BGR_YUY2);
-                    // this->image_pub.publish(cv_bridge::CvImage(std_msgs::Header(), "yuv422", yuv).toImageMsg());
                     sensor_msgs::Image msg;
                     msg.header.stamp = ros::Time::now();
                     msg.header.frame_id = "camera_frame";
@@ -154,57 +153,73 @@ public:
     }
 };
 
+class CameraWrapper {
+    private:
+        std::shared_ptr<ins_camera::Camera> cam;
+    public:
+        CameraWrapper(int argc, char* argv[]){
+            ros::init(argc, argv, "insta");
+            run_camera();
+            ros::spin();
+        }
+        ~CameraWrapper(){
+            ROS_ERROR("Closing Camera\n");
+            this->cam->Close();
+        }
+
+        int run_camera()
+        {
+            ins_camera::DeviceDiscovery discovery;
+            auto list = discovery.GetAvailableDevices();
+            for (int i = 0; i < list.size(); ++i) {
+                auto desc = list[i];
+                std::cout << "serial:" << desc.serial_number << "\t"
+                    << "camera type:" << int(desc.camera_type) << "\t"
+                    << "lens type:" << int(desc.lens_type) << std::endl;
+            }
+
+            if (list.size() <= 0) {
+                std::cerr << "no device found." << std::endl;
+                return -1;
+            }
+
+            this->cam = std::make_shared<ins_camera::Camera>(list[0].info);
+            //ins_camera::Camera cam(list[0].info);
+            if (!this->cam->Open()) {
+                std::cerr << "failed to open camera" << std::endl;
+                return -1;
+            }
+
+            std::cout << "http base url:" << this->cam->GetHttpBaseUrl() << std::endl;
+
+            std::shared_ptr<ins_camera::StreamDelegate> delegate = std::make_shared<TestStreamDelegate>();
+            this->cam->SetStreamDelegate(delegate);
+
+            discovery.FreeDeviceDescriptors(list);
+
+            std::cout << "Successfully opened camera..." << std::endl;
+
+            auto camera_type = this->cam->GetCameraType();
+
+            auto start = time(NULL);
+            this->cam->SyncLocalTimeToCamera(start);
+            
+            ins_camera::LiveStreamParam param;
+            param.video_resolution = ins_camera::VideoResolution::RES_3840_1920P20;
+            param.video_bitrate = 1024 * 1024 / 100;
+            param.enable_audio = false;
+            param.using_lrv = false;
+
+            do{
+
+            } while (!this->cam->StartLiveStreaming(param));
+            std::cout << "successfully started live stream" << std::endl;
+        }
+};
+
 int main(int argc, char* argv[]) {
-    ros::init(argc, argv, "insta");
-
-    ins_camera::DeviceDiscovery discovery;
-    auto list = discovery.GetAvailableDevices();
-    for (int i = 0; i < list.size(); ++i) {
-        auto desc = list[i];
-        std::cout << "serial:" << desc.serial_number << "\t"
-            << "camera type:" << int(desc.camera_type) << "\t"
-            << "lens type:" << int(desc.lens_type) << std::endl;
-    }
-
-    if (list.size() <= 0) {
-        std::cerr << "no device found." << std::endl;
-        return -1;
-    }
-
-    std::shared_ptr<ins_camera::Camera> cam = std::make_shared<ins_camera::Camera>(list[0].info);
-    //ins_camera::Camera cam(list[0].info);
-    if (!cam->Open()) {
-        std::cerr << "failed to open camera" << std::endl;
-        return -1;
-    }
-
-    std::cout << "http base url:" << cam->GetHttpBaseUrl() << std::endl;
-
-    std::shared_ptr<ins_camera::StreamDelegate> delegate = std::make_shared<TestStreamDelegate>();
-    cam->SetStreamDelegate(delegate);
-
-    discovery.FreeDeviceDescriptors(list);
-
-    std::cout << "Successfully opened camera..." << std::endl;
-
-    auto camera_type = cam->GetCameraType();
-
-    auto start = time(NULL);
-    cam->SyncLocalTimeToCamera(start);
-    
-    ins_camera::LiveStreamParam param;
-    param.video_resolution = ins_camera::VideoResolution::RES_3840_1920P20;
-    // param.video_resolution = ins_camera::VideoResolution::RES_3040_3040P24; // Note 3040 but 2304*1152
-    param.video_bitrate = 1024 * 1024 / 100;
-    param.enable_audio = false;
-    param.using_lrv = false;
-
-    do{
-
-    } while (!cam->StartLiveStreaming(param));
-    std::cout << "successfully started live stream" << std::endl;
-
-    ros::spin();
-    cam->Close();
+    ROS_ERROR("Opened Camera\n");
+    CameraWrapper camera(argc, argv);
+    ROS_ERROR("Closing Camera\n");
     return 0;
 }

@@ -16,7 +16,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: Front Camera
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -132,5 +132,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1920
-  X: 2143
-  Y: 309
+  X: 80
+  Y: 140
