@@ -25,11 +25,10 @@ class GetImages:
             cv2.imshow("Image", image)
 
             k = cv2.waitKey(1)
-            if k == 27:
-                #ESC pressed
+            if k == 27: # ESC Pressed
                 print("Closing...")
 
-            elif k%256 == 32:
+            elif k%256 == 32: # SPACE Pressed
                 img_name = "frame_{}.jpg".format(self.img_counter)
                 img_path = os.path.join(self.pkg_dir, 'distorted', img_name)
                 cv2.imwrite(img_path, image)

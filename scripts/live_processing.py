@@ -52,6 +52,9 @@ class LiveProcessing():
 
             # Convert the YUV image to BGR format
             bgr_image = cv2.cvtColor(image, cv2.COLOR_YUV2BGR_I420)
+
+            print(f"Image Size: {bgr_image.shape[:2]}")
+
             # Assuming the image is horizontally split for Front | Back
             height, width = bgr_image.shape[:2]
             mid_point = width // 2

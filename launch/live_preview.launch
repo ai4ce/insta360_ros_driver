@@ -3,8 +3,8 @@
     <arg name="get_images" default="false"/>
     <rosparam file="$(find insta360_ros_driver)/config/X2_params.yaml" command="load"/>
     <node name="raw_output" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
-    <node name="live_processing" pkg="insta360_ros_driver" type="live_processing.py" output="screen"/>
+    <node name="live_processing" pkg="insta360_ros_driver" type="live_processing.py" output="screen" launch-prefix="xterm -e"/>
 
-    <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="/front_camera_image/compressed"/>
+    <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="/back_camera_image/compressed"/>
     <node if="$(arg get_images)" name="get_images" pkg="insta360_ros_driver" type="get_images.py" output="screen"/>
 </launch>

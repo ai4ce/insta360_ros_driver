@@ -19,12 +19,11 @@ catkin build
 ```
 
 ## Usage
-In order to access the camera feed, administrator privileges are required. Furthermore, the camera natively records in YUV format. The conversion to BGR/RGB is CPU-intensive, so this is done in post processing. To use this driver, use the following commands to record data and then process them.
+The camera natively records in YUV format. The conversion to BGR/RGB is CPU-intensive, so this is done in post processing. To use this driver, use the following commands to record data and then process them.
 
 ### Raw Data Recording
 Use the following to start recording. Recordings are saved as bag files under the <code>bag_raw</code> directory.
 ```
-sudo -s
 source devel/setup.bash
 roslaunch insta360_ros_driver record.launch
 ```

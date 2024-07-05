@@ -20,11 +20,20 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <atomic>
+#include <signal.h>
+
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
+}
 
+std::atomic<bool> shutdown_requested(false);
+void signal_handler(int signal) {
+    if (signal == SIGINT) {
+        shutdown_requested = true;
+    }
 }
 class TestStreamDelegate : public ins_camera::StreamDelegate {
 private:
@@ -159,8 +168,7 @@ class CameraWrapper {
     public:
         CameraWrapper(int argc, char* argv[]){
             ros::init(argc, argv, "insta");
-            run_camera();
-            ros::spin();
+            ROS_ERROR("Opened Camera\n");
         }
         ~CameraWrapper(){
             ROS_ERROR("Closing Camera\n");
@@ -205,8 +213,8 @@ class CameraWrapper {
             this->cam->SyncLocalTimeToCamera(start);
             
             ins_camera::LiveStreamParam param;
-            param.video_resolution = ins_camera::VideoResolution::RES_3840_1920P20;
-            param.video_bitrate = 1024 * 1024 / 100;
+            param.video_resolution = ins_camera::VideoResolution::RES_2176_1088P30;
+            param.video_bitrate = 1024 * 1024* 10;
             param.enable_audio = false;
             param.using_lrv = false;
 
@@ -218,8 +226,23 @@ class CameraWrapper {
 };
 
 int main(int argc, char* argv[]) {
-    ROS_ERROR("Opened Camera\n");
-    CameraWrapper camera(argc, argv);
-    ROS_ERROR("Closing Camera\n");
+    // Register signal handler
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = signal_handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
+    {
+        CameraWrapper camera(argc, argv);
+        camera.run_camera();
+
+        while (ros::ok() && !shutdown_requested.load()) {
+            ros::spinOnce();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // Reduce CPU usage
+        }
+    }
+
+    ros::shutdown();
     return 0;
 }
