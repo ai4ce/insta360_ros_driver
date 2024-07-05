@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
 <launch>
     <node name="insta360_ros_driver" pkg="insta360_ros_driver" type="insta360_ros_driver" output="screen"/>
+
+    <node name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="/insta_image_yuv"/>
 </launch>
