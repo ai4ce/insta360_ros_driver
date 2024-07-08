@@ -1,4 +1,5 @@
 <?xml version="1.0"?>
 <launch>
     <node name="post_processing" pkg="insta360_ros_driver" type="postprocess.py" output="screen"/>
+    <rosparam file="$(find insta360_ros_driver)/config/X2_params.yaml" command="load"/>
 </launch>

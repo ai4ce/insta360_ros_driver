@@ -213,8 +213,8 @@ class CameraWrapper {
             this->cam->SyncLocalTimeToCamera(start);
             
             ins_camera::LiveStreamParam param;
-            param.video_resolution = ins_camera::VideoResolution::RES_1920_960P20;
-            param.video_bitrate = 1024 * 1024* 10;
+            param.video_resolution = ins_camera::VideoResolution::RES_3840_1920P20;
+            param.video_bitrate = 1024 * 1024 / 100;
             param.enable_audio = false;
             param.using_lrv = false;
 

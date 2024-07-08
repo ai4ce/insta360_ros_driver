@@ -21,6 +21,13 @@ catkin build
 ## Usage
 The camera natively records in YUV format. The conversion to BGR/RGB is CPU-intensive, so this is done in post processing. To use this driver, use the following commands to record data and then process them.
 
+### Permissions Setup
+First, access needs to be granted to the USB port. A script is created that automatically searches for the Insta360 camera and grants it permission.
+```
+source devel/setup.bash
+rosrun insta360_ros_driver setup.sh
+```
+
 ### Raw Data Recording
 Use the following to start recording. Recordings are saved as bag files under the <code>bag_raw</code> directory.
 ```

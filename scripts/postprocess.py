@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from Curb2Door.dependencies.insta360_ros_driver.scripts.live_processing import D, K
 import rosbag
 import rospy
 import cv2
