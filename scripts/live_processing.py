@@ -63,10 +63,10 @@ class LiveProcessing():
             back_image = bgr_image[:, mid_point:]
 
             # Rotate front image 90 degrees clockwise
-            front_image = cv2.rotate(front_image, cv2.ROTATE_90_CLOCKWISE)
+            # front_image = cv2.rotate(front_image, cv2.ROTATE_90_CLOCKWISE)
 
             # Rotate back image 90 degrees counterclockwise
-            back_image = cv2.rotate(back_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            # back_image = cv2.rotate(back_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
             if(self.undistort):
                 front_image = undistort_image(front_image, self.K, self.D)
