@@ -8,8 +8,8 @@ cd ~/catkin_ws/src
 git clone https://github.com/ai4ce/insta360_ros_driver
 cd ..
 ```
-Then, the Insta360 libraries need to installed as follows: 
-- add the header <code>camera</code> and <code>stream</code> header files inside the <code>include</code>
+Then, the Insta360 libraries need to be installed as follows:
+- add the <code>camera</code> and <code>stream</code> header files inside the <code>include</code> directory
 - add the <code>libCameraSDK.so</code> library under the <code>lib</code> directory.
 
 Afterwards, install the other required dependencies and build
@@ -22,7 +22,7 @@ The Insta360 requires sudo privilege to be accessed via USB. To compensate for t
 ```
 rosrun insta360_ros_driver setup.sh
 ```
-This create a symlink  based on the vendor ID of Insta360 cameras. The symlink, in this case <code>/dev/insta</code> is used to grant permissions to the usb port used by the camera.
+This creates a symlink  based on the vendor ID of Insta360 cameras. The symlink, in this case <code>/dev/insta</code> is used to grant permissions to the usb port used by the camera.
 ![setup](docs/setup.png)
 
 ## Usage
@@ -77,9 +77,9 @@ This is the higher-level "bag" folder that contains the "raw", "compressed", and
 
 This specifies which subdirectory to save the bag files to. 
 
-When set to "raw", it will record a bag file into the <mode>bag/raw</mode> folder with only the <code>/insta_image_yuv</code> topic. 
+When set to "raw", it will record a bag file into the <code>bag/raw</code> folder with only the <code>/insta_image_yuv</code> topic. 
 
-When set to "compressed", it will record a bag file into the <mode>bag/compressed</mode> folder with only the <code>/front_camera_image</code> and <code>/back_camera_image</code> topics. 
+When set to "compressed", it will record a bag file into the <code>bag/compressed</code> folder with only the <code>/front_camera_image</code> and <code>/back_camera_image</code> topics. 
 
 When set to "undistorted", the recorded topics are the same as when set to "compressed" but the file will be saved to the <code>bag/undistorted</code> folder.
 
@@ -136,4 +136,4 @@ This tells the launch file which subdirectory to look for the bag file.
 
 This is the filename of the bag file that will be previewed. Please make sure to change this accordingly. 
 
-When launched, an RViZ window will be created showing both front and back images, as was previously demonstrated in earlier sections of the documentation
+When launched, an RViz window will be created showing both front and back images, as was previously demonstrated in earlier sections of the documentation
