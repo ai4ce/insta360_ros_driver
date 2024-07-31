@@ -1,6 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-    <param name="bag_dir" value="$(find insta360_ros_driver)/bag"/>
+    <arg name="bag_dir" default="$(find insta360_ros_driver)/bag"/>
 
+    <param name="bag_dir" value="$(arg bag_dir)"/>
+    
     <node name="compression_node" pkg="insta360_ros_driver" type="compression.py" output="screen"/>
 </launch>

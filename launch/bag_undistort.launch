@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="bag_dir" default="$(find insta360_ros_driver)/bag"/>
+
     <rosparam file="$(find insta360_ros_driver)/config/intrinsics.yaml" command="load"/>
-    <param name="bag_dir" value="$(find insta360_ros_driver)/bag"/>
+    <param name="bag_dir" value="$(arg bag_dir)"/>
     <param name="undistort" value="true"/>
 
     <node name="undistortion_node" pkg="insta360_ros_driver" type="undistortion.py" output="screen"/>
