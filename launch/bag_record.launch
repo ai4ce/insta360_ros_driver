@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="mode" default="compressed"/> <!-- compressed or raw -->
+    <arg name="bag_path" default="$(find insta360_ros_driver)/bag"/>
+
+    <group if="$(eval arg('mode') == 'compressed')">
+        <node name="rosbag" pkg="rosbag" type="record" args="-o $(arg bag_path)/compressed/ /back_camera_image/compressed /front_camera_image/compressed" output="screen"/>
+    </group>
+
+    <group if="$(eval arg('mode') == 'raw')">
+        <node name="rosbag" pkg="rosbag" type="record" args="-o $(arg bag_path)/raw/ /insta_image_yuv" output="screen"/>
+    </group>
+</launch>

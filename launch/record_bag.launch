@@ -1,5 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-    <node name="insta360_ros_driver" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
-    <node name="rosbag" pkg="rosbag" type="record" args="-a -o $(find insta360_ros_driver)/bag_raw/ " output="screen"/>
-</launch>

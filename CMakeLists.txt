@@ -46,12 +46,15 @@ target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBS} CameraS
 target_include_directories(${PROJECT_NAME} PUBLIC
     "${PROJECT_SOURCE_DIR}/include"
 )
-    
 catkin_package()
 
+catkin_python_setup()
+
 catkin_install_python(PROGRAMS 
+  scripts/compression.py
+  scripts/undistortion.py
   scripts/live_processing.py
-  scripts/postprocess.py
   scripts/get_images.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+

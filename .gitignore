@@ -1,10 +1,9 @@
-bag_raw/*
-bag_processed/*
+bag/*
+image_capture/*
 lib/*
 include/*
 .vscode
 
-!bag_raw/.gitkeep
-!bag_processed/.gitkeep
-!lib/.gitkeep
-!include/.gitkeep
+!bag/raw/.gitkeep
+!bag/compressed/.gitkeep
+!bag/undistorted/.gitkeep

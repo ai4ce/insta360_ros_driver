@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-    <arg name="debug" default="false"/>
-    <node name="insta360_ros_driver" pkg="insta360_ros_driver" type="insta360_ros_driver" output="screen"/>
-
-    <node if="$(arg debug)" name="rqt_image_view" pkg="rqt_image_view" type="rqt_image_view" args="/insta_image_yuv"/>
-    
-    <node if="$(arg debug)" name="rostopic_hz" pkg="insta360_ros_driver" type="rostopic_hz_raw.sh" output="screen" launch-prefix="xterm -e"/>
-</launch>
