@@ -6,6 +6,7 @@ import os
 import subprocess
 import signal
 import sys
+import datetime
 
 # Function to handle SIGINT (Ctrl + C)
 def signal_handler(sig, frame):
@@ -26,14 +27,19 @@ if __name__ == '__main__':
     compressed_bag_folder = rospy.get_param('compressed_bag_folder', os.path.join(default_dir, 'compressed'))
     undistorted_bag_folder = rospy.get_param('undistorted_bag_folder', os.path.join(default_dir, 'undistorted'))
 
+    time = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+
     if bag_type == 'raw':
-        command = f"rosbag record -o {raw_bag_folder}/ /insta_image_yuv"
+        filename = f"{raw_bag_folder}/{time}_raw.bag"
+        command = f"rosbag record -O {filename} /insta_image_yuv"
         record_location = raw_bag_folder
     elif bag_type == 'compressed':
-        command = f"rosbag record -o {compressed_bag_folder}/ /back_camera_image/compressed /front_camera_image/compressed"
+        filename = f"{compressed_bag_folder}/{time}_compressed.bag"
+        command = f"rosbag record -O {filename} /back_camera_image/compressed /front_camera_image/compressed"
         record_location = compressed_bag_folder
     elif bag_type == 'undistorted':
-        command = f"rosbag record -o {undistorted_bag_folder}/ /back_camera_image/compressed /front_camera_image/compressed"
+        filename = f"{undistorted_bag_folder}/{time}_undistorted.bag"
+        command = f"rosbag record -O {filename} /back_camera_image/compressed /front_camera_image/compressed"
         record_location = undistorted_bag_folder
     else:
         rospy.logerr('Invalid bag_type parameter.')
@@ -42,7 +48,7 @@ if __name__ == '__main__':
     # Register the signal handler for SIGINT (Ctrl + C)
     signal.signal(signal.SIGINT, signal_handler)
 
-    rospy.logwarn(f"Recording location: {record_location}")
+    rospy.logwarn(f"Recording to: {record_location}/{filename}")
 
     # Start the recording process
     process = subprocess.Popen(command, shell=True)
