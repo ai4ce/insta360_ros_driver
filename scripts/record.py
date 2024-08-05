@@ -48,7 +48,7 @@ if __name__ == '__main__':
     # Register the signal handler for SIGINT (Ctrl + C)
     signal.signal(signal.SIGINT, signal_handler)
 
-    rospy.logwarn(f"Recording to: {record_location}/{filename}")
+    rospy.logwarn(f"Recording to: {filename}")
 
     # Start the recording process
     process = subprocess.Popen(command, shell=True)

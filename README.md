@@ -33,6 +33,7 @@ The camera can be brought up with the following launch file
 ```
 roslaunch insta360_ros_driver bringup.launch
 ```
+![bringup](docs/bringup_rqt.png)
 This publishes the raw yuv and compressed images as the following topics
 - /insta_image_yuv
 - /front_camera_image/compressed
@@ -41,49 +42,33 @@ This publishes the raw yuv and compressed images as the following topics
 The launch file has the following optional arguments:
 - compress (default="true")
 
-Whether to publish the compressed front and back images. When set to false, only the raw YUV image is published
+Enables the <code>/live_processing</code> which publishes the compressed front and back images. When set to false, only the raw YUV image is published
 
 - undistort (default="false")
 
-When set to true, it will use the specified intrinsic matrix, found in <code>config/intrinsic.yaml</code> to undistort the images in real-time. Note that this process can reduce the frame rate and/or increase latency. It is therefore recommended to keep it as 'false' and perform undistortion in post-processing, as will be shown in the next section.
+When set to true, the <code>/live_processing</code> node will also use the specified intrinsic matrix, found in <code>config/config.yaml</code> to undistort the images in real-time. **Note that this process can reduce the frame rate and/or increase latency.** It is therefore recommended to keep it as 'false' and perform undistortion in post-processing, as will be shown in the next section.
 
 - debug (default="false")
 
-When set to true, additional diagnostic windows are created. These show the publishing frequency and image size. 
+When set to true, additional diagnostic windows are created. These show the publishing frequency and image size. Note that **xterm** is required for this functionality, and can be installed using the following command.
+```
+sudo apt-get install xterm
+```
 
 ### Recording to a Bag File
 While the camera driver is active (via the bringup launch file above), data can be recorded to a bag file using
 ```
 roslaunch insta360_ros_driver bag_record.launch
 ```
-By default, it will save the <code>/front_camera_image/compressed</code> and <code>/back_camera_image/compressed</code> topics to the <code>bag/compressed</code> folder.
+**The bag file save locations are specified within <code>config/config.yaml</code>**
+![config.yaml](docs/config.png)
 
-Since this repository also contains tools for image compression and undistortion, the bag files, by default, are structured as follows:
-
-```
-insta360_ros_driver/
-|--bag/
-   |--raw/
-   |--compressed/
-   |--undistorted/
-```
-
-The launch file has the following optional arguments.
-- bag_dir (default="insta360_ros_driver/bag")
-
-This is the higher-level "bag" folder that contains the "raw", "compressed", and "undistorted" subdirectories. 
-
+The launch file contains one optional argument:
 - bag_type (default="compressed", options="\["raw", "compressed", "undistorted"\])
 
-This specifies which subdirectory to save the bag files to. 
+This specifies which directory to save the bag_files to, as specified in <code>config/config.yaml</code> When set to "raw", it will only record the <code>/insta_image_yuv</code> topic. Note that when specifying the <code>bag_type</code> to be "undistorted", <code>undistort:=true</code> must be set for <code>bringup.launch</code>
 
-When set to "raw", it will record a bag file into the <code>bag/raw</code> folder with only the <code>/insta_image_yuv</code> topic. 
-
-When set to "compressed", it will record a bag file into the <code>bag/compressed</code> folder with only the <code>/front_camera_image</code> and <code>/back_camera_image</code> topics. 
-
-When set to "undistorted", the recorded topics are the same as when set to "compressed" but the file will be saved to the <code>bag/undistorted</code> folder.
-
-Note that the RAW YUV image appears as follows:
+The Raw YUV image appears as follows:
 
 ![YUV](docs/yuv.png)
 
@@ -92,12 +77,7 @@ Given a bag file containing raw YUV image data, the images can be split to front
 ```
 roslaunch insta360_ros_driver bag_compress.launch
 ```
-The launch file has one optional argument:
-- bag_dir (default="insta360_ros_driver/bag")
-
-This is the higher-level "bag" folder that contains the "raw", "compressed", and "undistorted" subdirectories. By default, then, it will look for all raw bag files in the <code>insta360_ros_driver/bag/raw</code> directory.
-
-This launch file will output bag files with the <code>/front_camera_image/compressed</code> and <code>back_camera_image/compressed</code> topics in the <code>compressed</code> bag subdirectory.
+This launch file reads all the bag files specified in the <code>raw_bag_folder</code> within the <code>config/config.yaml</code> file and outputs bag files containing split and compressed images into the <code>compressed_bag_folder</code> directory. The compressed images are within the <code>/front_camera_image/compressed</code> and <code>/back_camera_image/compressed</code> topics.
 
 After compression and splitting, the images appear as follows:
 ![BGR](docs/bgr.png)
@@ -107,12 +87,7 @@ Given a bag file containing compressed front and back images, these images can b
 ```
 roslaunch insta360_ros_driver bag_undistort.launch
 ```
-The launch file has one optional argument:
-- bag_dir (default="insta360_ros_driver/bag")
-
-This is the higher-level "bag" folder that contains the "raw", "compressed", and "undistorted" subdirectories. By default, then, it will look for all compressed bag files in the <code>insta360_ros_driver/bag/compressed</code> directory.
-
-This launch file will output bag files with the undistorted images in the <code>undistorted</code>
+This launch file reads all the bag files specified in the <code>compressed_bag_folder</code> within the <code>config/config.yaml</code> file and outputs bag files undistorted images into the <code>undistorted_bag_folder</code> directory. The images are undistorted using the intrinsics specified inside the <code>config/config.yaml</code> file and are within the <code>/front_camera_image/compressed</code> and <code>/back_camera_image/compressed</code> topics.
 
 After undistortion, the images appear as follows:
 ![undistorted](docs/undistort.png)
@@ -123,17 +98,9 @@ The compressed and undistorted bag files can be previewed using RViz via the fol
 roslaunch insta360_ros_driver bag_preview.launch
 ```
 
-The launch file has the following arguments:
-- bag_dir (default="insta360_ros_driver/bag")
+The launch file has the following argument:
+- bag_file (default="~/bag/undistorted/record.bag")
 
-This is the higher-level "bag" folder that contains the "raw", "compressed", and "undistorted" subdirectories.
-
-- bag_type (default="compressed", options=\["compressed", "undistorted"\])
-
-This tells the launch file which subdirectory to look for the bag file.
-
-- bag_file (default="record.bag")
-
-This is the filename of the bag file that will be previewed. Please make sure to change this accordingly. 
+This is the filepath of the bag file that will be previewed. Please make sure to change this accordingly. 
 
 When launched, an RViz window will be created showing both front and back images, as was previously demonstrated in earlier sections of the documentation

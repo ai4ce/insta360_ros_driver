@@ -1,6 +1,6 @@
-raw_bag_folder: ~/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/raw
-compressed_bag_folder: ~/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/compressed
-undistorted_bag_folder: ~/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/undistorted
+raw_bag_folder: /home/bag/raw
+compressed_bag_folder: /home/bag/compressed
+undistorted_bag_folder: /home/bag/undistorted
 
 K: [
   [305.8511660909695, 0.0, 571.9976412068438], 

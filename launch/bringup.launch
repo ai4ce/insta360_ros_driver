@@ -1,12 +1,13 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="get_images" default="false"/>
-    <arg name="debug" default="false"/>
-    <arg name="config" default="config.yaml"/>
-    <arg name="undistort" default="false"/>
     <arg name="compress" default="true"/>
+    <arg name="undistort" default="false"/>
+    <arg name="debug" default="false"/>
+    <arg name="get_images" default="false"/>
     
-    <node name="raw_output" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
+    <arg name="config" default="config.yaml"/>
+    
+    <node name="bringup" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
 
     <group if="$(arg compress)">
         <rosparam file="$(find insta360_ros_driver)/config/$(arg config)" command="load"/>
