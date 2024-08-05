@@ -1,17 +1,11 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="bag_type" default="compressed"/> <!-- raw, compressed, or undistorted -->
-    <arg name="bag_dir" default="$(find insta360_ros_driver)/bag"/>
+    <arg name="config" default="config.yaml"/>
+    
+    <rosparam file="$(find insta360_ros_driver)/config/$(arg config)" command="load"/>
+    <node name="directory_verification" pkg="insta360_ros_driver" type="directory_verification.py"/>
 
-    <group if="$(eval arg('mode') == 'raw')">
-        <node name="rosbag" pkg="rosbag" type="record" args="-o $(arg bag_dir)/raw/ /insta_image_yuv" output="screen"/>
-    </group>
-
-    <group if="$(eval arg('mode') == 'compressed')">
-        <node name="rosbag" pkg="rosbag" type="record" args="-o $(arg bag_dir)/compressed/ /back_camera_image/compressed /front_camera_image/compressed" output="screen"/>
-    </group>
-
-    <group if="$(eval arg('mode') == 'undistorted')">
-        <node name="rosbag" pkg="rosbag" type="record" args="-o $(arg bag_dir)/compressed/ /back_camera_image/compressed /front_camera_image/compressed" output="screen"/>
-    </group>
+    <param name="bag_type" value="$(arg bag_type)"/>
+    <node name="record" pkg="insta360_ros_driver" type="record.py"/>
 </launch>

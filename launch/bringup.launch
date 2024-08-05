@@ -2,14 +2,14 @@
 <launch>
     <arg name="get_images" default="false"/>
     <arg name="debug" default="false"/>
-    <arg name="intrinsics" default="intrinsics.yaml"/>
+    <arg name="config" default="config.yaml"/>
     <arg name="undistort" default="false"/>
     <arg name="compress" default="true"/>
     
     <node name="raw_output" pkg="insta360_ros_driver" type="insta360_ros_driver"/>
 
     <group if="$(arg compress)">
-        <rosparam file="$(find insta360_ros_driver)/config/$(arg intrinsics)" command="load"/>
+        <rosparam file="$(find insta360_ros_driver)/config/$(arg config)" command="load"/>
         <param name="undistort" value="$(arg undistort)"/>
 
         <node unless="$(arg debug)" name="live_processing" pkg="insta360_ros_driver" type="live_processing.py"/>

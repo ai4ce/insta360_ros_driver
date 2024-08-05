@@ -55,6 +55,8 @@ catkin_install_python(PROGRAMS
   scripts/undistortion.py
   scripts/live_processing.py
   scripts/get_images.py
+  scripts/record.py
+  src/${PROJECT_NAME}/directory_verification.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

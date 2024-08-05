@@ -18,3 +18,6 @@ def verify_directories():
         if not os.path.exists(folder):
             os.makedirs(folder)
             rospy.loginfo(f"Created folder {folder}")
+
+if __name__ == '__main__':
+    verify_directories()
