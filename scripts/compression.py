@@ -6,35 +6,37 @@ import cv2
 from cv_bridge import CvBridge
 from tqdm import tqdm
 import os
-from insta360_ros_driver.tools import *
+from insta360_ros_driver.tools import split_image, compress_image_to_msg
+from insta360_ros_driver.directory_verification import verify_directories
 
 if __name__ == '__main__':
-    rospy.init_node("compession_node")
+    rospy.init_node('compression_node')
     bridge = CvBridge()
 
     topic_name = '/insta_image_yuv'
+
+    verify_directories()
+
     default_dir = rospkg.RosPack().get_path('insta360_ros_driver')
     default_dir = os.path.join(default_dir, 'bag')
-    bag_dir = rospy.get_param('bag_dir', default_dir)
-    #Check if folder with raw bag files exist
-    if not os.path.exists(os.path.join(bag_dir, 'raw')):
-        rospy.logerr("No raw data found in the specified directory")
-        exit()
+
+    raw_bag_folder = rospy.get_param('raw_bag_folder', os.path.join(default_dir, 'raw'))
+    compressed_bag_folder = rospy.get_param('compressed_bag_folder', os.path.join(default_dir, 'compressed'))
+
+    rospy.loginfo(f"Raw Bag Folder: {raw_bag_folder}")
+    rospy.loginfo(f"Compressed Bag Folder: {compressed_bag_folder}")
     
-    bag_filenames = os.listdir(os.path.join(bag_dir, 'raw'))
+    bag_filenames = os.listdir(raw_bag_folder)
     bag_filenames = [f for f in bag_filenames if f.endswith('.bag') and not f.startswith('.')]
     bag_filenames.sort()
     bag_filenames.sort(key=len)
     print(bag_filenames)
 
-    bag_paths = [os.path.join(bag_dir, 'raw', bag_filename) for bag_filename in bag_filenames]
-
-    if not os.path.exists(os.path.join(bag_dir, 'compressed')):
-        os.makedirs(os.path.join(bag_dir, 'compressed'))
+    bag_paths = [os.path.join(raw_bag_folder, bag_filename) for bag_filename in bag_filenames]
     
     outbag_filenames = [filename.split('.')[0] + '_compressed.bag' for filename in bag_filenames]
-    outbag_paths = [os.path.join(bag_dir, 'compressed', outbag_filename) for outbag_filename in outbag_filenames]
-
+    outbag_paths = [os.path.join(compressed_bag_folder, outbag_filename) for outbag_filename in outbag_filenames]
+    
     for i in tqdm(range(len(bag_paths))):
         try:
             with rosbag.Bag(bag_paths[i], 'r') as bag:

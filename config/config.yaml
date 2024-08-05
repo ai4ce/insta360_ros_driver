@@ -1,0 +1,16 @@
+raw_bag_folder: /home/abanesjo/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/raw
+compressed_bag_folder: /home/abanesjo/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/compressed
+undistorted_bag_folder: /home/abanesjo/Desktop/catkin_ws/src/Curb2Door/dependencies/insta360_ros_driver/bag/undistorted
+
+K: [
+  [305.8511660909695, 0.0, 571.9976412068438], 
+  [0.0, 304.8739784192282, 578.9734717897188], 
+  [0.0, 0.0, 1.0]
+  ]
+
+D: [
+  [0.0829955798117611], 
+  [-0.027906274475464777],
+  [0.0076202648985968895], 
+  [-0.0010836351255689319]
+  ]

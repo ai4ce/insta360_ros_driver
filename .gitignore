@@ -3,6 +3,7 @@ image_capture/*
 lib/*
 include/*
 .vscode
+*.pyc
 
 !bag/raw/.gitkeep
 !bag/compressed/.gitkeep

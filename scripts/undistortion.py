@@ -7,36 +7,33 @@ import numpy as np
 from tqdm import tqdm
 import os
 import rospkg
-from insta360_ros_driver.tools import *
+from insta360_ros_driver.tools import undistort_image, compress_image_to_msg
+from insta360_ros_driver.directory_verification import verify_directories
 
 if __name__ == '__main__':
     rospy.init_node("undistortion_node")
     bridge = CvBridge()
 
     topic_names = ['/front_camera_image/compressed', '/back_camera_image/compressed']
-    default_dir = rospkg.RosPack().get_path('insta360_ros_driver')
-    default_dir = os.path.join(default_dir, 'bag')
-    bag_dir = rospy.get_param('bag_dir', default_dir)
     K = np.asarray(rospy.get_param("K", np.eye(3,3)))
     D = np.asarray(rospy.get_param("D", np.zeros(4)))
 
-    if not os.path.exists(os.path.join(bag_dir, 'compressed')):
-        rospy.logerr("No compressed data found in the specified directory")
-        exit()
-    
-    bag_filenames = os.listdir(os.path.join(bag_dir, 'compressed'))
+    verify_directories()
+    default_dir = rospkg.RosPack().get_path('insta360_ros_driver')
+    default_dir = os.path.join(default_dir, 'bag')
+    compressed_bag_folder = rospy.get_param('compressed_bag_folder', os.path.join(default_dir, 'compressed'))
+    undistorted_bag_folder = rospy.get_param('undistorted_bag_folder', os.path.join(default_dir, 'undistorted'))
+
+    bag_filenames = os.listdir(compressed_bag_folder)
     bag_filenames = [f for f in bag_filenames if f.endswith('.bag') and not f.startswith('.')]
     bag_filenames.sort()
     bag_filenames.sort(key=len)
     print(bag_filenames)
 
-    bag_paths = [os.path.join(bag_dir, 'compressed', bag_filename) for bag_filename in bag_filenames]
-
-    if not os.path.exists(os.path.join(bag_dir, 'undistorted')):
-        os.makedirs(os.path.join(bag_dir, 'undistorted'))
+    bag_paths = [os.path.join(compressed_bag_folder, bag_filename) for bag_filename in bag_filenames]
     
     outbag_filenames = [filename.split('.')[0] + '_undistorted.bag' for filename in bag_filenames]
-    outbag_paths = [os.path.join(bag_dir, 'undistorted', outbag_filename) for outbag_filename in outbag_filenames]
+    outbag_paths = [os.path.join(undistorted_bag_folder, outbag_filename) for outbag_filename in outbag_filenames]
 
     for i in tqdm(range(len(bag_paths))):
         try:
