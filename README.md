@@ -18,6 +18,8 @@ rosdep install --from-paths src --ignore-src -r -y
 catkin build
 ```
 
+Before continuing, **make sure the camera is set to dual-lens mode**
+
 The Insta360 requires sudo privilege to be accessed via USB. To compensate for this, a udev configuration can be automatically created that will only request for sudo once. The camera can thus be setup initially via:
 ```
 rosrun insta360_ros_driver setup.sh
