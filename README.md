@@ -3,6 +3,8 @@
 A ROS driver for the Insta360 cameras. This driver is tested on Ubuntu 20.04 with ROS Noetic. The driver has also been verified on the Insta360 X2 and X3 cameras.
 
 ## Installation
+To use this driver, you need to first have Insta360 SDK. Please apply for the SDK from the [Insta360 website](https://www.insta360.com/sdk/home). 
+
 ```
 cd ~/catkin_ws/src
 git clone https://github.com/ai4ce/insta360_ros_driver
@@ -106,3 +108,7 @@ The launch file has the following argument:
 This is the filepath of the bag file that will be previewed. Please make sure to change this accordingly. 
 
 When launched, an RViz window will be created showing both front and back images, as was previously demonstrated in earlier sections of the documentation
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ai4ce/insta360_ros_driver&type=Date)](https://star-history.com/#ai4ce/insta360_ros_driver&Date)
