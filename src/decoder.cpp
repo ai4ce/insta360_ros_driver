@@ -46,7 +46,9 @@ private:
     enum AVHWDeviceType hw_type_ = AV_HWDEVICE_TYPE_NONE;
 
     rclcpp::Subscription<sensor_msgs::msg::CompressedImage>::SharedPtr subscription_;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr dual_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr front_publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr back_publisher_;
 
     std::thread publisher_thread_;
     std::queue<cv::Mat> frame_publish_queue_;
@@ -152,14 +154,39 @@ private:
                 frame_publish_queue_.pop();
             }
 
-            if (!frame_to_publish.empty() && publisher_) {
-                auto img_msg = std::make_unique<sensor_msgs::msg::Image>();
+            if (!frame_to_publish.empty() && dual_publisher_ && front_publisher_ && back_publisher_) {
+                int img_height = frame_to_publish.rows;
+                int img_width = frame_to_publish.cols;
+                int midpoint = img_width / 2;
+                
+                cv::Rect front_rect(0, 0, midpoint, img_height);
+                cv::Mat front_img = frame_to_publish(front_rect);
+
+                cv::Rect back_rect(midpoint, 0, midpoint, img_height);
+                cv::Mat back_img = frame_to_publish(back_rect);
+
+                std_msgs::msg::Header front_header;
+                front_header.stamp = this->get_clock()->now();
+                front_header.frame_id = "front_camera_frame";
+                cv_bridge::CvImage cv_image_front(front_header, sensor_msgs::image_encodings::BGR8, front_img);
+                cv_image_front.toImageMsg(*front_img_msg);
+                front_publisher_->publish(std::move(front_img_msg));
+                
+                auto back_img_msg = std::make_unique<sensor_msgs::msg::Image>();
+                std_msgs::msg::Header back_header;
+                back_header.stamp = this->get_clock()->now();
+                back_header.frame_id = "back_camera_frame";
+                cv_bridge::CvImage cv_image_back(back_header, sensor_msgs::image_encodings::BGR8, back_img);
+                cv_image_back.toImageMsg(*back_img_msg);
+                back_publisher_->publish(std::move(back_img_msg));
+
+                auto dual_img_msg = std::make_unique<sensor_msgs::msg::Image>();
                 std_msgs::msg::Header header;
                 header.stamp = this->get_clock()->now();
                 header.frame_id = "camera_frame";
                 cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, frame_to_publish);
-                cv_image.toImageMsg(*img_msg);
-                publisher_->publish(std::move(img_msg));
+                cv_image.toImageMsg(*dual_img_msg);
+                dual_publisher_->publish(std::move(dual_img_msg));
             }
         }
     }
@@ -312,12 +339,16 @@ private:
 public:
     H264DecoderNode() : Node("h264_decoder_node") {
         this->declare_parameter("compressed_topic", "/dual_fisheye/image/compressed");
+        this->declare_parameter("front_topic", "/front_fisheye/image");
+        this->declare_parameter("back_topic", "/back_fisheye/image");
         this->declare_parameter("uncompressed_topic", "/dual_fisheye/image");
         this->declare_parameter("skip_frame", 0);
         this->declare_parameter("i_frame_only", false);
 
         std::string subscribe_topic = this->get_parameter("compressed_topic").as_string();
-        std::string publish_topic = this->get_parameter("uncompressed_topic").as_string();
+        std::string front_publish_topic = this->get_parameter("front_topic").as_string();
+        std::string back_publish_topic = this->get_parameter("back_topic").as_string();
+        std::string dual_publish_topic = this->get_parameter("uncompressed_topic").as_string();
         skip_frame_ = this->get_parameter("skip_frame").as_int();
         i_frame_only_ = this->get_parameter("i_frame_only").as_bool();
 
@@ -325,7 +356,9 @@ public:
             subscribe_topic, 10,
             std::bind(&H264DecoderNode::compressed_image_callback, this, std::placeholders::_1));
 
-        publisher_ = this->create_publisher<sensor_msgs::msg::Image>(publish_topic, 10);
+        front_publisher_ = this->create_publisher<sensor_msgs::msg::Image>(front_publish_topic, 10);
+        back_publisher_ = this->create_publisher<sensor_msgs::msg::Image>(back_publish_topic, 10);
+        dual_publisher_ = this->create_publisher<sensor_msgs::msg::Image>(dual_publish_topic, 10);
 
         publisher_thread_ = std::thread(&H264DecoderNode::PublisherThreadLoop, this);
         
@@ -333,7 +366,9 @@ public:
 
         RCLCPP_INFO(this->get_logger(), "H.264 Decoder Node initialized");
         RCLCPP_INFO(this->get_logger(), "Subscribing to: %s", subscribe_topic.c_str());
-        RCLCPP_INFO(this->get_logger(), "Publishing to: %s", publish_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing to: %s", front_publish_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing to: %s", back_publish_topic.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing to: %s", dual_publish_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Skip frame: %d, I-frame only: %s", skip_frame_, i_frame_only_ ? "true" : "false");
     }
 
