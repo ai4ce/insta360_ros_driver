@@ -16,6 +16,8 @@ find_package(std_srvs REQUIRED)
 find_package(imu_tools REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(Eigen3 REQUIRED)
 pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
@@ -79,9 +81,18 @@ ament_target_dependencies(equirectangular_cpp
   cv_bridge
   OpenCV
 )
+add_executable(perspective_cpp src/perspective.cpp)
+ament_target_dependencies(perspective_cpp
+  rclcpp
+  cv_bridge
+  OpenCV
+  tf2_geometry_msgs
+  geometry_msgs
+)
 target_link_libraries(equirectangular_cpp ${OpenCV_LIBRARIES})
+target_link_libraries(perspective_cpp ${OpenCV_LIBRARIES} Eigen3::Eigen)
 
-install(TARGETS equirectangular_cpp
+install(TARGETS equirectangular_cpp perspective_cpp
   DESTINATION lib/${PROJECT_NAME}
 )
 
