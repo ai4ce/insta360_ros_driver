@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="equirectangular" default="false"/>
+    <arg name="decoder" default="true"/>
     <arg name="imu_filter" default="true"/>
     <arg name="equirectangular_config" default="$(find-pkg-share insta360_ros_driver)/config/equirectangular.yaml"/>
     <arg name="imu_config" default="$(find-pkg-share insta360_ros_driver)/config/imu_filter.yaml"/>
@@ -9,7 +10,7 @@
     <node pkg="insta360_ros_driver" exec="insta360_ros_driver" name="insta360_ros_driver" output="log"/>
 
     <!-- Decodes Compressed Images -->
-    <node pkg="insta360_ros_driver" exec="decoder" name="image_decoder" output="log">
+    <node pkg="insta360_ros_driver" exec="decoder" name="image_decoder" output="log" if="$(var decoder)">
         <param name="compressed_topic" value="/dual_fisheye/image/compressed"/>
         <param name="uncompressed_topic" value="/dual_fisheye/image"/>
         <!-- We can skip decoding every <skip_frame>. So skip_frame = 1 will only publish half the frames, etc. -->

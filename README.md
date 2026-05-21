@@ -31,7 +31,9 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-Before continuing, **make sure the camera is set to dual-lens mode**
+The Insta360 X3 (and potentially other models) needs a micro-sd card inserted to use the API. Ensure this is done.
+
+Before continuing,  **make sure the camera is set to dual-lens mode**
 
 Additionally, **ensure the camera's USB mode is set to Android**:
 1. On the camera, swipe down the screen to the main menu
