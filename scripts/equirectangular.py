@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import os
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -15,10 +16,15 @@ from rcl_interfaces.msg import SetParametersResult
 
 
 class EquirectangularNode(Node):
-    def __init__(self, enable_calibration=False):
+    def __init__(self, enable_calibration=False, auto_update=False, params_file=None):
         super().__init__('equirectangular_node')
 
         self.params_changed = True
+        self.pending_update = False
+        self.initial_display = True
+        self.needs_display_update = False
+        self.auto_update = auto_update
+        self.params_file = params_file
         
         # Declare parameters with default values from YAML
         self.declare_parameters(
@@ -94,6 +100,7 @@ class EquirectangularNode(Node):
         if self.calibration_mode:
             self.get_logger().info("Calibration mode enabled")
             self.setup_calibration_ui()
+            self.update_timer = self.create_timer(0.1, self.check_pending_update)
     
     def load_parameters(self):
         """Load parameters from ROS parameter server"""
@@ -127,7 +134,8 @@ class EquirectangularNode(Node):
             raise
     
     def save_calibration(self):
-        """Save current calibration parameters to ROS parameter server"""
+        """Save current calibration parameters to ROS parameter server and YAML file"""
+        import os
         try:
             self.set_parameters([
                 Parameter('cx_offset', Parameter.Type.DOUBLE, self.cx_offset),
@@ -141,34 +149,46 @@ class EquirectangularNode(Node):
                 ])
             ])
             
-            # Print parameters in YAML format for copy-pasting
+            yaml_path = self.params_file if self.params_file else os.path.expanduser('~/insta360_ros_driver/config/equirectangular.yaml')
+            yaml_content = f"""equirectangular_node:
+  ros__parameters:
+    cx_offset: {self.cx_offset}
+    cy_offset: {self.cy_offset}
+    crop_size: {self.crop_size}
+    translation: [{self.tx}, {self.ty}, {self.tz}]
+    rotation_deg: [{math.degrees(self.roll)}, {math.degrees(self.pitch)}, {math.degrees(self.yaw)}]
+    gpu: {str(self.gpu_enabled).lower()}
+    out_width: {self.out_width}
+    out_height: {self.out_height}
+"""
+            
+            with open(yaml_path, 'w') as f:
+                f.write(yaml_content)
+                f.flush()
+                os.fsync(f.fileno())
+            
             print("\n" + "="*50)
-            print("CALIBRATION PARAMETERS (YAML FORMAT)")
+            print(f"SAVED TO: {yaml_path}")
             print("="*50)
-            print("equirectangular_node:")
-            print("  ros__parameters:")
-            print(f"    cx_offset: {self.cx_offset}")
-            print(f"    cy_offset: {self.cy_offset}")
-            print(f"    crop_size: {self.crop_size}")
-            print(f"    translation: [{self.tx}, {self.ty}, {self.tz}]")
-            print(f"    rotation_deg: [{math.degrees(self.roll)}, {math.degrees(self.pitch)}, {math.degrees(self.yaw)}]")
-            print(f"    gpu: {self.gpu_enabled}")
-            print(f"    out_width: {self.out_width}")
-            print(f"    out_height: {self.out_height}")
+            print(yaml_content)
             print("="*50 + "\n")
             
-            self.get_logger().info("Parameters saved to ROS parameter server and printed above")
+            self.get_logger().info(f"Parameters saved to {yaml_path}")
             return True
         except Exception as e:
             self.get_logger().error(f"Error saving parameters: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def parameters_callback(self, params):
         """Parameter update callback for dynamic reconfiguration"""
+        if self.calibration_mode:
+            return SetParametersResult(successful=True)
+        
         update_needed = False
         
         for param in params:
-            # Check if a camera parameter was changed
             if param.name in ['cx_offset', 'cy_offset', 'crop_size', 'translation', 'rotation_deg',
                              'out_width', 'out_height', 'gpu']:
                 update_needed = True
@@ -218,8 +238,10 @@ class EquirectangularNode(Node):
         self.back_to_front_rotation = torch.matmul(torch.matmul(Rz, Ry), Rx)
         self.back_to_front_translation = torch.tensor([self.tx, self.ty, self.tz], device=self.device)
         
-        if self.maps_initialized and not self.calibration_mode:
-            self.maps_initialized = False
+        # Force remapping when parameters change
+        self.maps_initialized = False
+        
+        if not self.calibration_mode:
             self.get_logger().info("Parameters updated, remapping will occur on next image")
 
     def init_mapping(self, img_height: int, img_width: int):
@@ -381,13 +403,13 @@ class EquirectangularNode(Node):
             
             # Initialize mapping if needed (skip dimension check in calibration mode)
             if self.calibration_mode:
-                # In calibration mode, only reinitialize when explicitly requested
-                if not self.maps_initialized or self.params_changed:
+                # In calibration mode, reinitialize when maps not initialized
+                if not self.maps_initialized:
                     self.init_mapping(front_img.shape[0], front_img.shape[1])
                     self.params_changed = False
             else:
                 # Normal mode: reinitialize on dimension changes
-                if not self.maps_initialized or self.params_changed or \
+                if not self.maps_initialized or \
                    (self.img_height is not None and front_img.shape[0] != self.img_height) or \
                    (self.img_width is not None and front_img.shape[1] != self.img_width):
                     self.init_mapping(front_img.shape[0], front_img.shape[1])
@@ -423,11 +445,10 @@ class EquirectangularNode(Node):
 
     def create_equirectangular(self, front_img: np.ndarray, back_img: np.ndarray) -> np.ndarray:
         """Create equirectangular image from front and back fisheye images using CPU."""
-        if not self.maps_initialized or self.params_changed or \
+        if not self.maps_initialized or \
            (self.img_height is not None and front_img.shape[0] != self.img_height) or \
            (self.img_width is not None and front_img.shape[1] != self.img_width):
             self.init_mapping(front_img.shape[0], front_img.shape[1])
-            self.params_changed = False
         
         if not self.maps_initialized or self.front_map_x_np is None or self.front_map_y_np is None or \
            self.back_map_x_np is None or self.back_map_y_np is None or \
@@ -466,11 +487,10 @@ class EquirectangularNode(Node):
             self.get_logger().warn("GPU processing called but not enabled/initialized. Falling back to CPU.")
             return self.create_equirectangular(front_img, back_img)
 
-        if not self.maps_initialized or self.params_changed or \
+        if not self.maps_initialized or \
            (self.img_height is not None and front_img.shape[0] != self.img_height) or \
            (self.img_width is not None and front_img.shape[1] != self.img_width):
             self.init_mapping(front_img.shape[0], front_img.shape[1])
-            self.params_changed = False
         
         if not self.maps_initialized or self.front_grid is None or self.back_grid is None or \
            self.front_mask_gpu is None or self.back_mask_gpu is None or \
@@ -508,50 +528,104 @@ class EquirectangularNode(Node):
         
         # Create trackbars with initial values from ROS parameters
         cv2.createTrackbar("CX Offset [-100,100]", self.control_window, int(self.cx_offset) + 100, 200, self.update_cx)
-        
         cv2.createTrackbar("CY Offset [-100,100]", self.control_window, int(self.cy_offset) + 100, 200, self.update_cy)
-        
         cv2.createTrackbar("Crop Size", self.control_window, self.crop_size, 1920, self.update_crop)
-        
         cv2.createTrackbar("TX [-0.5,0.5]", self.control_window, int(self.tx * 1000) + 500, 1000, self.update_tx)
-        
         cv2.createTrackbar("TY [-0.5,0.5]", self.control_window, int(self.ty * 1000) + 500, 1000, self.update_ty)
-        
         cv2.createTrackbar("TZ [-0.5,0.5]", self.control_window, int(self.tz * 1000) + 500, 1000, self.update_tz)
-        
         cv2.createTrackbar("Roll [-180°,180°]", self.control_window, int(math.degrees(self.roll) * 10) + 1800, 3600, self.update_roll)
-        
         cv2.createTrackbar("Pitch [-180°,180°]", self.control_window, int(math.degrees(self.pitch) * 10) + 1800, 3600, self.update_pitch)
-        
         cv2.createTrackbar("Yaw [-180°,180°]", self.control_window, int(math.degrees(self.yaw) * 10) + 1800, 3600, self.update_yaw)
 
     # Trackbar update callbacks for calibration
     def update_cx(self, value):
         self.cx_offset = float(value - 100)
+        self.pending_update = True
 
     def update_cy(self, value):
         self.cy_offset = float(value - 100)
+        self.pending_update = True
         
     def update_crop(self, value: int):
         self.crop_size = value
+        self.pending_update = True
 
     def update_tx(self, value):
         self.tx = float((value - 500) / 1000.0)
+        self.pending_update = True
 
     def update_ty(self, value):
         self.ty = float((value - 500) / 1000.0)
+        self.pending_update = True
 
     def update_tz(self, value):
         self.tz = float((value - 500) / 1000.0)
+        self.pending_update = True
 
     def update_roll(self, value):
         self.roll = float(math.radians((value - 1800) / 10.0))
+        self.pending_update = True
 
     def update_pitch(self, value):
         self.pitch = float(math.radians((value - 1800) / 10.0))
+        self.pending_update = True
 
     def update_yaw(self, value):
         self.yaw = float(math.radians((value - 1800) / 10.0))
+        self.pending_update = True
+    
+    def check_pending_update(self):
+        """Timer callback to check if update is needed"""
+        if self.pending_update:
+            self.pending_update = False
+            self.params_changed = True
+            self.needs_display_update = True
+    
+    def refresh_calibration_view(self):
+        """Immediately refresh the calibration view with current parameters"""
+        if not hasattr(self, 'window_name') or self.last_front_img is None or self.last_back_img is None:
+            return
+        
+        self.update_camera_parameters()
+        self.maps_initialized = False
+        
+        # Re-crop if needed
+        if self.original_front_img is not None and self.original_back_img is not None:
+            orig_height, orig_width = self.original_front_img.shape[:2]
+            y_start = (orig_height - self.crop_size) // 2
+            x_start = (orig_width - self.crop_size) // 2
+            
+            if y_start >= 0 and x_start >= 0 and \
+               y_start + self.crop_size <= orig_height and x_start + self.crop_size <= orig_width:
+                front_img = self.original_front_img[y_start:y_start+self.crop_size, x_start:x_start+self.crop_size]
+                back_img = self.original_back_img[y_start:y_start+self.crop_size, x_start:x_start+self.crop_size]
+            else:
+                front_img = self.last_front_img
+                back_img = self.last_back_img
+        else:
+            front_img = self.last_front_img
+            back_img = self.last_back_img
+        
+        equirect_rgb = self.create_equirectangular(front_img, back_img)
+        if equirect_rgb is not None:
+            equirect_bgr = cv2.cvtColor(equirect_rgb, cv2.COLOR_RGB2BGR)
+        else:
+            equirect_bgr = np.zeros((self.out_height, self.out_width, 3), dtype=np.uint8)
+        
+        info_text = (
+            f"cx: {self.crop_size/2 + self.cx_offset:.1f}, cy: {self.crop_size/2 + self.cy_offset:.1f} | "
+            f"crop: {self.crop_size} | "
+            f"t: [{self.tx:.3f}, {self.ty:.3f}, {self.tz:.3f}] | "
+            f"r: [{math.degrees(self.roll):.1f}, {math.degrees(self.pitch):.1f}, {math.degrees(self.yaw):.1f}]"
+        )
+        
+        cv2.putText(equirect_bgr, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(equirect_bgr, "Press 's' to Save | 'q' to Quit", (10, equirect_bgr.shape[0] - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        
+        if equirect_bgr is not None and equirect_bgr.size > 0:
+            cv2.imshow(self.window_name, equirect_bgr)
+        cv2.waitKey(1)
     
     def apply_parameters(self):
         """Apply all parameter changes and update the visualization"""
@@ -594,69 +668,53 @@ class EquirectangularNode(Node):
         if not hasattr(self, 'window_name') or self.last_front_img is None or self.last_back_img is None:
             return
         
-        # Only process if parameters have been applied
+        # Show initial display, auto update mode (always), or when needs_display_update is set
+        if not self.initial_display and not self.auto_update and not self.needs_display_update:
+            key = cv2.waitKey(1)
+            if key == ord('s'):
+                self.save_calibration()
+            elif key == ord('q'):
+                self.get_logger().info("Exiting calibration mode")
+                cv2.destroyAllWindows()
+                self.calibration_mode = False
+            return
+        
+        if self.initial_display:
+            self.initial_display = False
+        
+        # In auto_update mode, don't clear needs_display_update
+        if not self.auto_update:
+            self.needs_display_update = False
+        
         if self.params_changed:
-            equirect_rgb = self.create_equirectangular(self.last_front_img, self.last_back_img)
-            if equirect_rgb is not None:
-                equirect_bgr = cv2.cvtColor(equirect_rgb, cv2.COLOR_RGB2BGR)
-                self._cached_equirect = equirect_bgr
-            else:
-                # Fallback to cached or black image
-                if hasattr(self, '_cached_equirect'):
-                    equirect_bgr = self._cached_equirect
-                else:
-                    equirect_bgr = np.zeros((self.out_height, self.out_width, 3), dtype=np.uint8)
+            self.update_camera_parameters()
+            
+            if self.original_front_img is not None and self.original_back_img is not None:
+                orig_height, orig_width = self.original_front_img.shape[:2]
+                y_start = (orig_height - self.crop_size) // 2
+                x_start = (orig_width - self.crop_size) // 2
+                
+                if y_start >= 0 and x_start >= 0 and \
+                   y_start + self.crop_size <= orig_height and x_start + self.crop_size <= orig_width:
+                    self.last_front_img = self.original_front_img[y_start:y_start+self.crop_size, x_start:x_start+self.crop_size].copy()
+                    self.last_back_img = self.original_back_img[y_start:y_start+self.crop_size, x_start:x_start+self.crop_size].copy()
+            
             self.params_changed = False
-        else:
-            # Use cached image if no changes
-            if not hasattr(self, '_cached_equirect') or self._cached_equirect is None:
-                equirect_rgb = self.create_equirectangular(self.last_front_img, self.last_back_img)
-                if equirect_rgb is not None:
-                    equirect_bgr = cv2.cvtColor(equirect_rgb, cv2.COLOR_RGB2BGR)
-                    self._cached_equirect = equirect_bgr
-                else:
-                    equirect_bgr = np.zeros((self.out_height, self.out_width, 3), dtype=np.uint8)
-            else:
-                equirect_bgr = self._cached_equirect
+            self.needs_display_update = False
         
-        info_text = (
-            f"cx: {self.crop_size/2 + self.cx_offset:.1f}, cy: {self.crop_size/2 + self.cy_offset:.1f} | "
-            f"crop: {self.crop_size} | "
-            f"t: [{self.tx:.3f}, {self.ty:.3f}, {self.tz:.3f}] | "
-            f"r: [{math.degrees(self.roll):.1f}, {math.degrees(self.pitch):.1f}, {math.degrees(self.yaw):.1f}]"
-        )
+        equirect_rgb = self.create_equirectangular(self.last_front_img, self.last_back_img)
+        equirect_bgr = cv2.cvtColor(equirect_rgb, cv2.COLOR_RGB2BGR) if equirect_rgb is not None else np.zeros((self.out_height, self.out_width, 3), dtype=np.uint8)
         
-        cv2.putText(
-            equirect_bgr, 
-            info_text,
-            (10, 30), 
-            cv2.FONT_HERSHEY_SIMPLEX, 
-            0.7, 
-            (0, 255, 0), 
-            2
-        )
+        info_text = f"cx: {self.crop_size/2 + self.cx_offset:.1f}, cy: {self.crop_size/2 + self.cy_offset:.1f} | crop: {self.crop_size} | t: [{self.tx:.3f}, {self.ty:.3f}, {self.tz:.3f}] | r: [{math.degrees(self.roll):.1f}, {math.degrees(self.pitch):.1f}, {math.degrees(self.yaw):.1f}]"
         
-        # Add instructions
-        if equirect_bgr is not None:
-            cv2.putText(
-                equirect_bgr,
-                "Press 'a' to Apply | 's' to Save | 'q' to Quit",
-                (10, equirect_bgr.shape[0] - 20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (0, 255, 255),
-                2
-            )
+        cv2.putText(equirect_bgr, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        cv2.putText(equirect_bgr, "Press 's' to Save | 'q' to Quit", (10, equirect_bgr.shape[0] - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
         
-        # Only show image if it's valid
         if equirect_bgr is not None and equirect_bgr.size > 0:
             cv2.imshow(self.window_name, equirect_bgr)
         
         key = cv2.waitKey(1)
-        if key == ord('a'):
-            self.apply_parameters()
-            self._cached_equirect = None  # Clear cache to force update
-        elif key == ord('s'):
+        if key == ord('s'):
             self.save_calibration()
         elif key == ord('q'):
             self.get_logger().info("Exiting calibration mode")
@@ -667,10 +725,18 @@ class EquirectangularNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     
-    # Check for calibration mode
+    # Check for calibration mode and flags
     enable_calibration = '--calibrate' in sys.argv
+    auto_update = '--auto-update' in sys.argv
     
-    node = EquirectangularNode(enable_calibration=enable_calibration)
+    # Extract params file from command line
+    params_file = None
+    for i, arg in enumerate(sys.argv):
+        if arg == '--params-file' and i + 1 < len(sys.argv):
+            params_file = os.path.expanduser(sys.argv[i + 1])
+            break
+    
+    node = EquirectangularNode(enable_calibration=enable_calibration, auto_update=auto_update, params_file=params_file)
     
     try:
         rclpy.spin(node)
@@ -681,7 +747,8 @@ def main(args=None):
         if node.calibration_mode and hasattr(node, 'window_name'):
             cv2.destroyAllWindows()
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
