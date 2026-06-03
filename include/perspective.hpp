@@ -4,15 +4,15 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
 #include <memory>
 #include <mutex>
 #include <atomic>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2/LinearMath/Quaternion.hpp>
+#include <tf2/LinearMath/Matrix3x3.hpp>
 #include <unsupported/Eigen/CXX11/Tensor>
 
 // 3D coordinate view: (height*width, 3) matrix where each row = [X, Y, Z]
