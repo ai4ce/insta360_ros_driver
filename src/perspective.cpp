@@ -1,36 +1,39 @@
-#include "equirectangular.hpp"
+#include "perspective.hpp"
 #include <rcl_interfaces/msg/set_parameters_result.hpp>
 #include <cmath>
+#include <numeric>
 #include <thread>
 #include <chrono>
 
-EquirectangularNode::EquirectangularNode()
-    : Node("equirectangular_node"),
+PerspectiveNode::PerspectiveNode()
+    : Node("perspective_node"),
       maps_initialized_(false),
       params_changed_(true),
-      img_height_(0),
-      img_width_(0)
+            img_height_(0),
+            img_width_(0)
 {
     // Declare parameters
     declare_parameter("cx_offset", 0.0);
     declare_parameter("cy_offset", 0.0);
     declare_parameter("crop_size", 960);
-    declare_parameter("translation", std::vector<double>{0.0, 0.0, -0.105});
-    declare_parameter("rotation_deg", std::vector<double>{-0.5, 0.0, 1.1});
+    declare_parameter("translation", std::vector<float>{0.0, 0.0, -0.105});
+    declare_parameter("rotation_deg", std::vector<float>{-0.5, 0.0, 1.1});
     declare_parameter("gpu", true);
     declare_parameter("out_width", 1920);
     declare_parameter("out_height", 960);
+    declare_parameter("horizontal_fov", 120.0);
+    declare_parameter("vertical_fov", 81.7867893);
     
     // Load parameters
     loadParameters();
     
     // Log GPU settings (note: C++ version currently only supports CPU)
-    RCLCPP_INFO(get_logger(), "C++ equirectangular node");
+    RCLCPP_INFO(get_logger(), "C++ perspective node");
     
     
     // Add parameter callback
     params_callback_handle = add_on_set_parameters_callback(
-        std::bind(&EquirectangularNode::parametersCallback, this, std::placeholders::_1));
+        std::bind(&PerspectiveNode::parametersCallback, this, std::placeholders::_1));
     
     updateCameraParameters();
     
@@ -40,26 +43,42 @@ EquirectangularNode::EquirectangularNode()
     // Create publishers and subscribers
     dual_fisheye_sub_ = create_subscription<sensor_msgs::msg::Image>(
         "/dual_fisheye/image", qos,
-        std::bind(&EquirectangularNode::imageCallback, this, std::placeholders::_1));
+        std::bind(&PerspectiveNode::imageCallback, this, std::placeholders::_1));
+
+    camera_orientation_sub_ = create_subscription<geometry_msgs::msg::Quaternion>(
+        "/camera_orientation/quaternion", qos,
+        [this](const geometry_msgs::msg::Quaternion::SharedPtr msg) {
+            tf2::fromMsg(*msg, camera_orientation_quaternion_);
+
+            tf2::Matrix3x3 matrix(camera_orientation_quaternion_);
+            
+            camera_orientation_matrix_ = cv::Matx33d(
+            matrix[0][0], matrix[0][1], matrix[0][2],
+            matrix[1][0], matrix[1][1], matrix[1][2],
+            matrix[2][0], matrix[2][1], matrix[2][2]);
+            new_orientation_ = true;
+        });
     
-    equirect_pub_ = create_publisher<sensor_msgs::msg::Image>(
-        "/equirectangular/image", qos);
+    perspective_pub_ = create_publisher<sensor_msgs::msg::Image>(
+        "/perspective/image", qos);
 }
 
-EquirectangularNode::~EquirectangularNode()
+PerspectiveNode::~PerspectiveNode()
 {
 }
 
-void EquirectangularNode::loadParameters()
+void PerspectiveNode::loadParameters()
 {
     try {
         cx_offset_ = get_parameter("cx_offset").as_double();
         cy_offset_ = get_parameter("cy_offset").as_double();
-        crop_size_ = get_parameter("crop_size").as_int();
         out_width_ = get_parameter("out_width").as_int();
         out_height_ = get_parameter("out_height").as_int();
         gpu_enabled_ = get_parameter("gpu").as_bool();
-        
+        horizontal_fov_ = get_parameter("horizontal_fov").as_double();
+        vertical_fov_ = get_parameter("vertical_fov").as_double();
+        crop_size_ = get_parameter("crop_size").as_int();
+
         auto translation = get_parameter("translation").as_double_array();
         tx_ = translation[0];
         ty_ = translation[1];
@@ -77,15 +96,18 @@ void EquirectangularNode::loadParameters()
         RCLCPP_INFO(get_logger(), "  Rotation (deg): [%.1f, %.1f, %.1f]", 
                     rotation_deg[0], rotation_deg[1], rotation_deg[2]);
         RCLCPP_INFO(get_logger(), "  Output size: %dx%d", out_width_, out_height_);
+        RCLCPP_INFO(get_logger(), "  Horizontal FOV: %.1f", horizontal_fov_);
+        RCLCPP_INFO(get_logger(), "  Vertical FOV: %.1f", vertical_fov_);
         RCLCPP_INFO(get_logger(), "  GPU enabled: %s", gpu_enabled_ ? "true" : "false");
     } catch (const std::exception& e) {
         RCLCPP_ERROR(get_logger(), "Error loading parameters: %s", e.what());
+        
         gpu_enabled_ = true;
         throw;
     }
 }
 
-void EquirectangularNode::updateCameraParameters()
+void PerspectiveNode::updateCameraParameters()
 {
     // Build rotation matrix
     cv::Matx33d Rx(
@@ -107,6 +129,8 @@ void EquirectangularNode::updateCameraParameters()
     );
     
     back_to_front_rotation_ = Rz * Ry * Rx;
+    RotationMatrix rot_eigen(back_to_front_rotation_.val);
+    rot_eigen.row(0) *= -1.0;
     back_to_front_translation_ = cv::Vec3d(tx_, ty_, tz_);
     
     if (maps_initialized_) {
@@ -115,13 +139,14 @@ void EquirectangularNode::updateCameraParameters()
     }
 }
 
-void EquirectangularNode::initMapping(int img_height, int img_width)
+void PerspectiveNode::initMapping(int img_height, int img_width)
 {
-    RCLCPP_INFO(get_logger(), "Initializing equirectangular projection: fusing two %dx%d fisheye images to %dx%d",
+    RCLCPP_INFO(get_logger(), "Initializing perspective projection: fusing two %dx%d fisheye images to %dx%d",
                 img_width, img_height, out_width_, out_height_);
     
     img_height_ = img_height;
     img_width_ = img_width;
+    
     int current_crop_size = crop_size_;
     int y_offset_crop = 0;
     int x_offset_crop = 0;
@@ -144,171 +169,122 @@ void EquirectangularNode::initMapping(int img_height, int img_width)
     
     // Create output coordinate grids
     
-    x_range = cv::Mat::zeros(1, out_width_, CV_32F);
-    y_range = cv::Mat::zeros(out_height_, 1, CV_32F);
+    x_range = cv::Mat(1, out_width_, CV_32F);
+    y_range = cv::Mat(out_height_, 1, CV_32F);
     
-    for (int i = 0; i < out_width_; ++i) {
-        x_range.at<float>(0, i) = static_cast<float>(i);
-    }
-    for (int i = 0; i < out_height_; ++i) {
-        y_range.at<float>(i, 0) = static_cast<float>(i);
-    }
+    // Fill with sequential values using direct pointer access (faster than .at<>)
+    std::iota(x_range.ptr<float>(0), x_range.ptr<float>(0) + out_width_, 0.0);
+    std::iota(y_range.ptr<float>(0), y_range.ptr<float>(0) + out_height_, 0.0);
     
     cv::repeat(x_range, out_height_, 1, x_grid);
     cv::repeat(y_range, 1, out_width_, y_grid);
     
-    // Convert to spherical coordinates
+    // Convert to spherical coordinates - vectorized using Eigen tensor with strided channel views
     // Note: x=0 corresponds to lon=-π, x=out_width-1 corresponds to lon=π*(out_width-1)/out_width
-    longitude = (x_grid / (float)out_width_) * 2 * M_PI - M_PI;
-    latitude = (y_grid / (float)out_height_) * M_PI - M_PI / 2;
+    float tan_horizontal = tan(horizontal_fov_ / 2.0 * M_PI / 180.0);
+    float tan_vertical = tan(vertical_fov_ / 2.0 * M_PI / 180.0);
+    
+    opencv_coordinates = cv::Mat(out_height_, out_width_, CV_32FC3);
+    // Eigen tensor (height, width, 3 channels) in row-major
+    Tensor3D eigen_coordinates(opencv_coordinates.ptr<float>(),out_height_, out_width_, 3);
+    
+    // Create strided Matrix views for each channel (X, Y, Z) - interleaved layout
+    CoordinateView eigen_X_coordinate(eigen_coordinates.data() + 0, out_height_, out_width_, Stride3(out_width_ * 3, 3));
+    CoordinateView eigen_Y_coordinate(eigen_coordinates.data() + 1, out_height_, out_width_, Stride3(out_width_ * 3, 3));
+    CoordinateView eigen_Z_coordinate(eigen_coordinates.data() + 2, out_height_, out_width_, Stride3(out_width_ * 3, 3));
+    
+    // Create grid views
+    Matrix x_grid_view(x_grid.ptr<float>(), out_height_, out_width_);
+    Matrix y_grid_view(y_grid.ptr<float>(), out_height_, out_width_);
+    
+    // Vectorized coordinate generation - directly to strided views
+    eigen_X_coordinate = (x_grid_view / (float)out_width_) * 2.0 * tan_horizontal - tan_horizontal;
+    eigen_Y_coordinate = (y_grid_view / (float)out_height_) * 2.0 * tan_vertical - tan_vertical;
+    eigen_Z_coordinate.setConstant(1.0);
     
     
+    cv::transform(opencv_coordinates, opencv_coordinates, camera_orientation_matrix_);
     
-    cv::exp(-latitude, cos_lat); // Using exp(-x) as intermediate for cos calculation
-    cos_lat = (1 - cos_lat) / (1 + cos_lat); // Convert to cos
-    cv::sqrt(1 - cos_lat.mul(cos_lat), sin_lat);
-    
-    cv::exp(-longitude, cos_lon);
-    cos_lon = (1 - cos_lon) / (1 + cos_lon);
-    cv::sqrt(1 - cos_lon.mul(cos_lon), sin_lon);
-    
-    // Correct calculation
-    
-    for (int y = 0; y < out_height_; ++y) {
-        for (int x = 0; x < out_width_; ++x) {
-            float lat = latitude.at<float>(y, x);
-            float lon = longitude.at<float>(y, x);
-            cos_lat.at<float>(y, x) = cos(lat);
-            sin_lat.at<float>(y, x) = sin(lat);
-            cos_lon.at<float>(y, x) = cos(lon);
-            sin_lon.at<float>(y, x) = sin(lon);
-        }
-    }
-    
-    X = cos_lat.mul(sin_lon);
-    Y = sin_lat;
-    Z = cos_lat.mul(cos_lon);
-    
-    // Create mask
-    front_mask_ = Z >= 0;
 
+    
+    // Create back_mask_ from Z channel (2D, matches image layout)
+    back_mask_ = eigen_Z_coordinate < 0.0;
     
     full_map_x_ = cv::Mat::zeros(out_height_, out_width_, CV_32F);
     full_map_y_ = cv::Mat::zeros(out_height_, out_width_, CV_32F);
 
+    
+    // Create Eigen maps to rotation and translation (OpenCV -> Eigen, zero-copy)
+    RotationMatrix rot_eigen(back_to_front_rotation_.val);
+    XYZ_Vector trans_eigen(back_to_front_translation_.val);
+    
 
+    
+    // Apply transformation: loop over pixels, if front keep original, if back apply transformation
     for (int y = 0; y < out_height_; ++y) {
         for (int x = 0; x < out_width_; ++x) {
-            
-            float X_val, Y_val, Z_val; // The calculated coordinates in the fisheye lens
-
-            // ... (Perform your existing 3D -> 2D projection math here) ...
-            // Result is (u, v) relative to the lens center (cx_, cy_)
-            // Note: Ensure cx_, cy_ are relative to the *crop*, not the full image yet.
-            if (front_mask_.at<uchar>(y, x)) {
-                X_val = X.at<float>(y, x);
-                Y_val = Y.at<float>(y, x);
-                Z_val = Z.at<float>(y, x);
-
-            } else {
-                cv::Vec3d point(X.at<float>(y, x), Y.at<float>(y, x), Z.at<float>(y, x));
-                
-                // Transform point
-                cv::Matx point_mat = cv::Matx(point);
-                cv::Matx transformed = back_to_front_rotation_ * point_mat + back_to_front_translation_;
-                
-                X_val = -transformed(0,0);
-                Y_val = transformed(1,0);
-                Z_val = transformed(2,0);
-                
-                
+            if (back_mask_(y, x)) {
+                // Back camera: apply rotation and translation
+                XYZ_Vector coord(&eigen_coordinates(y, x, 0));
+                coord = rot_eigen * coord + trans_eigen;
             }
-            float r = sqrt(X_val * X_val + Y_val * Y_val);
-            if (r < 1e-6) r = 1e-6;
-                
-            float theta = atan2(r, fabs(Z_val));
-            float r_fisheye = 2 * theta / M_PI * (img_width / 2.0);
-                
-            float u = cx_ + X_val / r * r_fisheye;
-            float v = cy_ + Y_val / r * r_fisheye;
-
-            // --- OPTIMIZATION: BAKE ROTATION AND TRANSLATION ---
-            
-            // 1. Handle Rotation (simulating cv::rotate)
-            // If the front image was rotated 90 deg Counter-Clockwise:
-            // New x' = y
-            // New y' = -x (plus offset)
-            float rot_u, rot_v;
-            // Calculate offsets to center the crop in the raw image half
-            
-
-            
-            if (front_mask_.at<uchar>(y, x)) {
-                // Apply Front Rotation (90 CCW) math to coordinates
-                rot_u = (img_height - 1) - v;
-                rot_v = u;
-            } else {
-                // Apply Back Rotation (90 CW) math
-                
-                rot_u = v; 
-                rot_v = (img_width - 1) - u; 
-            }
-            float final_x, final_y;
-            // 2. Handle Crop Offset and Dual-Image placement
-            // Where is this pixel in the ACTUAL raw dual-fisheye image?
-            if (front_mask_.at<uchar>(y, x)) {
-                // Front is usually the right half of the raw image (check your camera!)
-                final_x = img_width + x_offset_crop + rot_u; 
-                final_y = y_offset_crop + rot_v;
-            } else {
-                // Back is the left half
-                final_x = x_offset_crop + rot_u;
-                final_y = y_offset_crop + rot_v;
-            }
-            
-            
-            
-            // Write to the unified map
-            full_map_x_.at<float>(y, x) = final_x;
-            full_map_y_.at<float>(y, x) = final_y;
-
+            // Front camera: keep original coordinates (no action needed)
         }
     }
     
-   
 
+    
+    // Vectorized fisheye projection calculations
+    r_array_ = (eigen_X_coordinate.square() + eigen_Y_coordinate.square()).sqrt().max(1e-6);  // Clamp minimum value
+    r_fisheye_array_ = 2.0 * r_array_.binaryExpr(
+        eigen_Z_coordinate.abs(),
+        [](float r, float z) { return std::atan2(r, z); }) / M_PI * (img_width / 2.0);
+    u_array_ = cx_ + eigen_X_coordinate / r_array_ * r_fisheye_array_;
+    v_array_ = cy_ + eigen_Y_coordinate / r_array_ * r_fisheye_array_;
+    
+    // Vectorized rotation calculations
+    rot_u_array_ = back_mask_.select(v_array_,(img_height - 1.0) - v_array_);
+    rot_v_array_ = back_mask_.select(u_array_,(img_width - 1.0) - u_array_);
+    
+    // Vectorized final coordinate calculations
+    rot_u_array_ = rot_u_array_ + x_offset_crop;
+    rot_v_array_ = rot_v_array_ + y_offset_crop;
+    Matrix (full_map_x_.ptr<float>(), out_height_, out_width_) = back_mask_.select(rot_u_array_,img_width + rot_u_array_);
+    Matrix (full_map_y_.ptr<float>(), out_height_, out_width_) = rot_v_array_;
+
+    
     maps_initialized_ = true;
+    new_orientation_ = false;
     
     RCLCPP_INFO(get_logger(), "Mapping matrices initialization complete");
 }
 
 
-void EquirectangularNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr dual_fisheye_msg)
+void PerspectiveNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr dual_fisheye_msg)
 {
     
     try {
         cv_bridge::CvImageConstPtr cv_ptr = cv_bridge::toCvShare(dual_fisheye_msg, "rgb8");
         int rows_size=cv_ptr->image.rows;
         int cols_size=cv_ptr->image.cols/2;
-        if (!maps_initialized_ || params_changed_ ||
+        if (!maps_initialized_ || params_changed_ || new_orientation_ ||
                 rows_size != img_height_ || cols_size != img_width_) {
                 // Pass the full raw image dimensions
                 initMapping(rows_size, cols_size);
                 params_changed_ = false;
             }
         auto start_time = now();
-        // 3. Single Remap (Directly from Raw to Equirectangular)
-        cv::remap(cv_ptr->image, equirect_img, full_map_x_, full_map_y_, cv::INTER_LINEAR);
+        // 3. Single Remap (Directly from Raw to Perspective)
+        cv::remap(cv_ptr->image, perspective_img, full_map_x_, full_map_y_, cv::INTER_LINEAR);
         
-        
-        //cv::Mat equirect_img = createEquirectangular(front_img, back_img);
+
         
         // Publish result
         cv_bridge::CvImage out_msg;
         out_msg.header = dual_fisheye_msg->header;
         out_msg.encoding = "rgb8";
-        out_msg.image = equirect_img;
-        equirect_pub_->publish(*out_msg.toImageMsg());
+        out_msg.image = perspective_img;
+        perspective_pub_->publish(*out_msg.toImageMsg());
         
         auto process_time = (now() - start_time).seconds();
         RCLCPP_DEBUG(get_logger(), "Processing time: %.3f seconds", process_time);
@@ -320,7 +296,7 @@ void EquirectangularNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr
     }
 }
 
-rcl_interfaces::msg::SetParametersResult EquirectangularNode::parametersCallback(
+rcl_interfaces::msg::SetParametersResult PerspectiveNode::parametersCallback(
     const std::vector<rclcpp::Parameter> &parameters)
 {
     bool update_needed = false;
@@ -370,6 +346,12 @@ for (const auto &param : parameters)
                 yaw_ = rotation_deg[2] * M_PI / 180.0;
                 update_needed = true;
             }
+        } else if (param.get_name() == "horizontal_fov") {
+            horizontal_fov_ = param.as_double();
+            update_needed = true;
+        } else if (param.get_name() == "vertical_fov") {
+            vertical_fov_ = param.as_double();
+            update_needed = true;
         }
     }
     
@@ -388,7 +370,7 @@ int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
     
-    auto node = std::make_shared<EquirectangularNode>();
+    auto node = std::make_shared<PerspectiveNode>();
     
     try {
         rclcpp::spin(node);
