@@ -42,12 +42,7 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
-#Bringup Node
-
 add_executable(${PROJECT_NAME} src/main.cpp)
-
-target_link_libraries(${PROJECT_NAME} CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
-
 ament_target_dependencies(${PROJECT_NAME}
   rclcpp
   camera_info_manager
@@ -57,13 +52,13 @@ ament_target_dependencies(${PROJECT_NAME}
   std_srvs
   OpenCV
 )
+target_link_libraries(${PROJECT_NAME} CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
 
+install(TARGETS ${PROJECT_NAME}
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-#Decoder Node
 add_executable(decoder src/decoder.cpp)
-
-target_link_libraries(decoder CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
-
 ament_target_dependencies(decoder
   rclcpp
   camera_info_manager
@@ -73,23 +68,20 @@ ament_target_dependencies(decoder
   std_srvs
   OpenCV
 )
+target_link_libraries(decoder CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
+
+install(TARGETS decoder
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Add C++ equirectangular node
 add_executable(equirectangular_cpp src/equirectangular.cpp)
-
-target_link_libraries(equirectangular_cpp ${OpenCV_LIBRARIES})
-
 ament_target_dependencies(equirectangular_cpp
   rclcpp
   cv_bridge
   OpenCV
 )
-
-# Perspective Node
 add_executable(perspective_cpp src/perspective.cpp)
-
-target_link_libraries(perspective_cpp ${OpenCV_LIBRARIES} Eigen3::Eigen)
-
 ament_target_dependencies(perspective_cpp
   rclcpp
   cv_bridge
@@ -97,15 +89,14 @@ ament_target_dependencies(perspective_cpp
   tf2_geometry_msgs
   geometry_msgs
 )
+target_link_libraries(equirectangular_cpp ${OpenCV_LIBRARIES})
+target_link_libraries(perspective_cpp ${OpenCV_LIBRARIES} Eigen3::Eigen)
 
-# Install Nodes
-install(TARGETS ${PROJECT_NAME} decoder equirectangular_cpp perspective_cpp
+install(TARGETS equirectangular_cpp perspective_cpp
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Python Nodes
 ament_python_install_package(${PROJECT_NAME})
-
 install(PROGRAMS
   scripts/equirectangular.py
   scripts/calibrate.py
