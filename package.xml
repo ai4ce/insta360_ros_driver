@@ -12,19 +12,29 @@
 
   <build_depend>camera_info_manager</build_depend>
   <build_depend>cv_bridge</build_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>eigen3_cmake_module</build_depend>
   <build_depend>image_transport</build_depend>
+  <build_depend>geometry_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>std_srvs</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
   <build_export_depend>camera_info_manager</build_export_depend>
   <build_export_depend>cv_bridge</build_export_depend>
+  <build_export_depend>eigen</build_export_depend>
+  <build_export_depend>eigen3_cmake_module</build_export_depend>
   <build_export_depend>image_transport</build_export_depend>
+  <build_export_depend>geometry_msgs</build_export_depend>
   <build_export_depend>sensor_msgs</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>std_srvs</build_export_depend>
   <exec_depend>camera_info_manager</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>eigen</exec_depend>
+  <exec_depend>eigen3_cmake_module</exec_depend>
   <exec_depend>image_transport</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>std_srvs</exec_depend>

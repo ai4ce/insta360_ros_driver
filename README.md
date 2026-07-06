@@ -1,3 +1,8 @@
+# CHANGES OF THIS FORK
+- Dynamic parameters change works correctly
+- Equirectangular node is now more efficient
+- Perspective node have been added. You can control fov through parameters and camera orientation by publishing to: /&#8288;camera_orientation/&#8288;quaternion
+
 # insta360_ros_driver
 
 A ROS driver for the Insta360 cameras. This driver is tested on Ubuntu 22.04 with ROS2 Humble. The driver has also been verified on the Insta360 X2 and X3 cameras. The following resolutions are available, all at 30 FPS.
