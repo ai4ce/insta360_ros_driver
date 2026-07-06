@@ -122,7 +122,7 @@ void EquirectangularNode::initMapping(int img_height, int img_width)
     
     img_height_ = img_height;
     img_width_ = img_width;
-    int current_crop_size = crop_size_;
+    int current_crop_size = img_height - crop_size_;
     int y_offset_crop = 0;
     int x_offset_crop = 0;
     if (img_height_ != current_crop_size || img_width_ != current_crop_size) {
@@ -134,8 +134,8 @@ void EquirectangularNode::initMapping(int img_height, int img_width)
                 x_start + current_crop_size <= img_width_) {
                 img_height=current_crop_size;
                 img_width=current_crop_size;
-                y_offset_crop = (img_height_ - crop_size_) / 2;
-                x_offset_crop = (img_width_ - crop_size_) / 2;
+                y_offset_crop = (img_height_ - current_crop_size) / 2;
+                x_offset_crop = (img_width_ - current_crop_size) / 2;
             } 
         } 
 
