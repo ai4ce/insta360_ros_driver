@@ -15,7 +15,7 @@ PerspectiveNode::PerspectiveNode()
     // Declare parameters
     declare_parameter("cx_offset", 0.0);
     declare_parameter("cy_offset", 0.0);
-    declare_parameter("crop_size", 960);
+    declare_parameter("crop_size", 0);
     declare_parameter("translation", std::vector<float>{0.0, 0.0, -0.105});
     declare_parameter("rotation_deg", std::vector<float>{-0.5, 0.0, 1.1});
     declare_parameter("gpu", true);
