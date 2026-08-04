@@ -2,7 +2,7 @@
 <launch>
     <arg name="equirectangular" default="false"/>
     <arg name="perspective" default="true"/>
-    <arg name="imu_filter" default="true"/>
+    <arg name="imu_filter" default="false"/>
     <arg name="equirectangular_config" default="$(find-pkg-share insta360_ros_driver)/config/equirectangular.yaml"/>
     <arg name="perspective_config" default="$(find-pkg-share insta360_ros_driver)/config/perspective.yaml"/>
     <arg name="imu_config" default="$(find-pkg-share insta360_ros_driver)/config/imu_filter.yaml"/>
@@ -13,8 +13,7 @@
     <node pkg="insta360_ros_driver" exec="decoder" name="image_decoder" output="log">
         <param name="compressed_topic" value="/dual_fisheye/image/compressed"/>
         <param name="uncompressed_topic" value="/dual_fisheye/image"/>
-        <!-- We can skip decoding every <skip_frame>. So skip_frame = 1 will only publish half the frames, etc. -->
-        <param name="skip_frame" value="0"/>
+        <param name="skip_frame" value="2"/>
         <!-- If you want to minimize the CPU load the most, you can decode only the i-frames. But the expected FPS is about 1-2 FPS -->
         <param name="i_frame_only" value="false"/> 
     </node>
@@ -31,4 +30,9 @@
     <node if="$(var imu_filter)" pkg="imu_filter_madgwick" exec="imu_filter_madgwick_node" name="imu_filter" output="log">
         <param from="$(var imu_config)"/>
     </node>
+    <!-- Automatically open a GUI window to visualize the perspective video stream -->
+    <node pkg="image_view" exec="image_view" name="live_viewer" output="screen">
+        <remap from="image" to="/perspective/image"/>
+    </node>
+
 </launch>

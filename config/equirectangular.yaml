@@ -6,5 +6,5 @@ equirectangular_node:
     translation: [0.0, 0.0, -0.105]
     rotation_deg: [-0.5, 0.0, 1.1]
     gpu: true
-    out_width: 1920
-    out_height: 960
+    out_width: 1152
+    out_height: 1152

@@ -127,7 +127,7 @@ public:
 
         cam->SyncLocalTimeToCamera(utc_time,offset_time);       
         ins_camera::LiveStreamParam param;
-        param.video_resolution = ins_camera::VideoResolution::RES_1920_960P30; //Change this line to edit the resolution
+        param.video_resolution = ins_camera::VideoResolution::RES_1152_1152P30; //Change this line to edit the resolution
         //Possible resolutions (results may vary per model) are:
         //RES_3840_1920P30
         //RES_2560_1280P30
