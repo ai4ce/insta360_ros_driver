@@ -256,7 +256,7 @@ private:
             pkt_ = nullptr;
         }
         if (codec_ctx_) {
-            avcodec_close(codec_ctx_); 
+            // avcodec_close(codec_ctx_);
             avcodec_free_context(&codec_ctx_);
             codec_ctx_ = nullptr;
         }
