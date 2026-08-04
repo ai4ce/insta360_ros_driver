@@ -58,23 +58,22 @@ private:
     int skip_frame_ = 0;
     int frame_counter_ = 0;
     bool i_frame_only_ = false;
-
-    const char* decoder_name_;
+    std::string decoder_name_;
     
     void InitFFmpegDecoder() {
         hw_type_ = AV_HWDEVICE_TYPE_CUDA;
 
-        codec_ = avcodec_find_decoder_by_name(decoder_name_);
+        codec_ = avcodec_find_decoder_by_name(decoder_name_.c_str());
         if (!codec_) {
-            RCLCPP_WARN(this->get_logger(), "Hardware decoder not available, falling back to software");
+            RCLCPP_WARN(this->get_logger(), "%s Hardware decoder not available, falling back to software", decoder_name_.c_str());
             hw_type_ = AV_HWDEVICE_TYPE_NONE;
             codec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
             if (!codec_) {
-                RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_);
+                RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_.c_str());
                 return;
             }
         } else {
-            RCLCPP_INFO(this->get_logger(), "Using hardware %s decoder (NVDEC)", decoder_name_);
+            RCLCPP_INFO(this->get_logger(), "Using hardware %s decoder (NVDEC)", decoder_name_.c_str());
         }
 
         if (hw_type_ != AV_HWDEVICE_TYPE_NONE) {
@@ -84,7 +83,7 @@ private:
                 hw_type_ = AV_HWDEVICE_TYPE_NONE;
                 codec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
                 if (!codec_) {
-                    RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_);
+                    RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_.c_str());
                     return;
                 }
             }
@@ -312,28 +311,28 @@ private:
 
 public:
     H264DecoderNode() : Node("h264_decoder_node") {
-        decoder_name_ = "h264";
+                
         this->declare_parameter("compressed_topic", "/dual_fisheye/image/compressed");
         this->declare_parameter("uncompressed_topic", "/dual_fisheye/image");
         this->declare_parameter("skip_frame", 0);
         this->declare_parameter("i_frame_only", false);
+        this->declare_parameter("decoder_name", "h264_cuvid");
 
         std::string subscribe_topic = this->get_parameter("compressed_topic").as_string();
         std::string publish_topic = this->get_parameter("uncompressed_topic").as_string();
         skip_frame_ = this->get_parameter("skip_frame").as_int();
         i_frame_only_ = this->get_parameter("i_frame_only").as_bool();
-
+        decoder_name_ = this->get_parameter("decoder_name").as_string().c_str();
         subscription_ = this->create_subscription<sensor_msgs::msg::CompressedImage>(
             subscribe_topic, 10,
             std::bind(&H264DecoderNode::compressed_image_callback, this, std::placeholders::_1));
 
         publisher_ = this->create_publisher<sensor_msgs::msg::Image>(publish_topic, 10);
-
         publisher_thread_ = std::thread(&H264DecoderNode::PublisherThreadLoop, this);
         
         InitFFmpegDecoder();
 
-        RCLCPP_INFO(this->get_logger(), "%s Decoder Node initialized", decoder_name_);
+        RCLCPP_INFO(this->get_logger(), "%s Decoder Node initialized", decoder_name_.c_str());
         RCLCPP_INFO(this->get_logger(), "Subscribing to: %s", subscribe_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Publishing to: %s", publish_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Skip frame: %d, I-frame only: %s", skip_frame_, i_frame_only_ ? "true" : "false");

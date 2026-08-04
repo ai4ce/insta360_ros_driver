@@ -16,6 +16,8 @@
         <param name="skip_frame" value="2"/>
         <!-- If you want to minimize the CPU load the most, you can decode only the i-frames. But the expected FPS is about 1-2 FPS -->
         <param name="i_frame_only" value="false"/> 
+        <param name="decoder_name" value="h264_cuvid"/>
+        <!-- possile decoder h264_cuvid, h264, hevc?, mjpeg? -->
     </node>
 
     <!-- Creates Equirectangular Images -->
