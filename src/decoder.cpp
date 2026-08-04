@@ -59,21 +59,22 @@ private:
     int frame_counter_ = 0;
     bool i_frame_only_ = false;
 
+    const char* decoder_name_;
+    
     void InitFFmpegDecoder() {
         hw_type_ = AV_HWDEVICE_TYPE_CUDA;
-        const char* decoder_name = "h264_cuvid";
 
-        codec_ = avcodec_find_decoder_by_name(decoder_name);
+        codec_ = avcodec_find_decoder_by_name(decoder_name_);
         if (!codec_) {
             RCLCPP_WARN(this->get_logger(), "Hardware decoder not available, falling back to software");
             hw_type_ = AV_HWDEVICE_TYPE_NONE;
             codec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
             if (!codec_) {
-                RCLCPP_ERROR(this->get_logger(), "No H.264 decoder available");
+                RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_);
                 return;
             }
         } else {
-            RCLCPP_INFO(this->get_logger(), "Using hardware H.264 decoder (NVDEC)");
+            RCLCPP_INFO(this->get_logger(), "Using hardware %s decoder (NVDEC)", decoder_name_);
         }
 
         if (hw_type_ != AV_HWDEVICE_TYPE_NONE) {
@@ -83,7 +84,7 @@ private:
                 hw_type_ = AV_HWDEVICE_TYPE_NONE;
                 codec_ = avcodec_find_decoder(AV_CODEC_ID_H264);
                 if (!codec_) {
-                    RCLCPP_ERROR(this->get_logger(), "No H.264 decoder available");
+                    RCLCPP_ERROR(this->get_logger(), "No %s decoder available", decoder_name_);
                     return;
                 }
             }
@@ -311,6 +312,7 @@ private:
 
 public:
     H264DecoderNode() : Node("h264_decoder_node") {
+        decoder_name_ = "h264";
         this->declare_parameter("compressed_topic", "/dual_fisheye/image/compressed");
         this->declare_parameter("uncompressed_topic", "/dual_fisheye/image");
         this->declare_parameter("skip_frame", 0);
@@ -331,7 +333,7 @@ public:
         
         InitFFmpegDecoder();
 
-        RCLCPP_INFO(this->get_logger(), "H.264 Decoder Node initialized");
+        RCLCPP_INFO(this->get_logger(), "%s Decoder Node initialized", decoder_name_);
         RCLCPP_INFO(this->get_logger(), "Subscribing to: %s", subscribe_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Publishing to: %s", publish_topic.c_str());
         RCLCPP_INFO(this->get_logger(), "Skip frame: %d, I-frame only: %s", skip_frame_, i_frame_only_ ? "true" : "false");

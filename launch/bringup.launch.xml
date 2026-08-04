@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="equirectangular" default="false"/>
-    <arg name="perspective" default="true"/>
+    <arg name="perspective" default="false"/>
     <arg name="imu_filter" default="false"/>
     <arg name="equirectangular_config" default="$(find-pkg-share insta360_ros_driver)/config/equirectangular.yaml"/>
     <arg name="perspective_config" default="$(find-pkg-share insta360_ros_driver)/config/perspective.yaml"/>
@@ -32,7 +32,8 @@
     </node>
     <!-- Automatically open a GUI window to visualize the perspective video stream -->
     <node pkg="image_view" exec="image_view" name="live_viewer" output="screen">
-        <remap from="image" to="/perspective/image"/>
+        <!-- <remap from="image" to="/perspective/image"/> -->
+        <remap from="image" to="/dual_fisheye/image"/>
     </node>
 
 </launch>
