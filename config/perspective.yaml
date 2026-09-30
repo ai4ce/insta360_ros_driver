@@ -8,5 +8,9 @@ perspective_node:
     gpu: true
     out_width: 1920
     out_height: 960
+    use_ros_topic: true
     horizontal_fov: 120.0
     vertical_fov: 81.7867893
+    use_gstreamer: false
+    gstreamer_pipeline: ""
+    gstreamer_fps: 30.0

@@ -22,6 +22,7 @@ pkg_check_modules(AVCODEC REQUIRED libavcodec)
 pkg_check_modules(AVFORMAT REQUIRED libavformat)
 pkg_check_modules(AVUTIL REQUIRED libavutil)
 pkg_search_module(SWSCALE REQUIRED libswscale)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0 gstreamer-app-1.0)
 
 include_directories(
   include
@@ -30,11 +31,13 @@ include_directories(
   ${AVFORMAT_INCLUDE_DIRS}
   ${AVUTIL_INCLUDE_DIRS}
   ${SWSCALE_INCLUDE_DIRS}
+  ${GSTREAMER_INCLUDE_DIRS}
 )
 
 link_directories(
   ${PROJECT_SOURCE_DIR}/lib
   ${PROJECT_SOURCE_DIR}/include
+  ${GSTREAMER_LIBRARY_DIRS}
 )
 
 install(
@@ -76,21 +79,27 @@ install(TARGETS decoder
 
 # Add C++ equirectangular node
 add_executable(equirectangular_cpp src/equirectangular.cpp)
+target_sources(equirectangular_cpp PRIVATE src/gstreamer_ros_sink.cpp)
 ament_target_dependencies(equirectangular_cpp
   rclcpp
   cv_bridge
+  std_msgs
   OpenCV
 )
 add_executable(perspective_cpp src/perspective.cpp)
+target_sources(perspective_cpp PRIVATE src/gstreamer_ros_sink.cpp)
 ament_target_dependencies(perspective_cpp
   rclcpp
   cv_bridge
+  std_msgs
   OpenCV
   tf2_geometry_msgs
   geometry_msgs
 )
 target_link_libraries(equirectangular_cpp ${OpenCV_LIBRARIES})
 target_link_libraries(perspective_cpp ${OpenCV_LIBRARIES} Eigen3::Eigen)
+target_link_libraries(equirectangular_cpp ${GSTREAMER_LIBRARIES})
+target_link_libraries(perspective_cpp ${GSTREAMER_LIBRARIES})
 
 install(TARGETS equirectangular_cpp perspective_cpp
   DESTINATION lib/${PROJECT_NAME}
@@ -100,6 +109,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/equirectangular.py
   scripts/calibrate.py
+  scripts/ros_gstreamer_receiver.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

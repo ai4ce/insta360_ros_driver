@@ -8,3 +8,7 @@ equirectangular_node:
     gpu: true
     out_width: 1920
     out_height: 960
+    use_ros_topic: true
+    use_gstreamer: false
+    gstreamer_pipeline: ""
+    gstreamer_fps: 30.0

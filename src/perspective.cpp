@@ -23,6 +23,10 @@ PerspectiveNode::PerspectiveNode()
     declare_parameter("out_height", 960);
     declare_parameter("horizontal_fov", 120.0);
     declare_parameter("vertical_fov", 81.7867893);
+    declare_parameter("use_ros_topic", true);
+    declare_parameter("use_gstreamer", false);
+    declare_parameter("gstreamer_pipeline", std::string{});
+    declare_parameter("gstreamer_fps", 30.0);
     
     // Load parameters
     loadParameters();
@@ -59,8 +63,10 @@ PerspectiveNode::PerspectiveNode()
             new_orientation_ = true;
         });
     
-    perspective_pub_ = create_publisher<sensor_msgs::msg::Image>(
-        "/perspective/image", qos);
+    if (use_ros_topic_ && !use_gstreamer_) {
+        perspective_pub_ = create_publisher<sensor_msgs::msg::Image>(
+            "/perspective/image", qos);
+    }
 }
 
 PerspectiveNode::~PerspectiveNode()
@@ -74,10 +80,14 @@ void PerspectiveNode::loadParameters()
         cy_offset_ = get_parameter("cy_offset").as_double();
         out_width_ = get_parameter("out_width").as_int();
         out_height_ = get_parameter("out_height").as_int();
+        use_ros_topic_ = get_parameter("use_ros_topic").as_bool();
         gpu_enabled_ = get_parameter("gpu").as_bool();
         horizontal_fov_ = get_parameter("horizontal_fov").as_double();
         vertical_fov_ = get_parameter("vertical_fov").as_double();
         crop_size_ = get_parameter("crop_size").as_int();
+        use_gstreamer_ = get_parameter("use_gstreamer").as_bool();
+        gstreamer_pipeline_ = get_parameter("gstreamer_pipeline").as_string();
+        gstreamer_fps_ = get_parameter("gstreamer_fps").as_double();
 
         auto translation = get_parameter("translation").as_double_array();
         tx_ = translation[0];
@@ -99,6 +109,7 @@ void PerspectiveNode::loadParameters()
         RCLCPP_INFO(get_logger(), "  Horizontal FOV: %.1f", horizontal_fov_);
         RCLCPP_INFO(get_logger(), "  Vertical FOV: %.1f", vertical_fov_);
         RCLCPP_INFO(get_logger(), "  GPU enabled: %s", gpu_enabled_ ? "true" : "false");
+        RCLCPP_INFO(get_logger(), "  GStreamer enabled: %s", use_gstreamer_ ? "true" : "false");
     } catch (const std::exception& e) {
         RCLCPP_ERROR(get_logger(), "Error loading parameters: %s", e.what());
         
@@ -276,15 +287,19 @@ void PerspectiveNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr dua
         auto start_time = now();
         // 3. Single Remap (Directly from Raw to Perspective)
         cv::remap(cv_ptr->image, perspective_img, full_map_x_, full_map_y_, cv::INTER_LINEAR);
+
+        writeGstreamerFrame(perspective_img, dual_fisheye_msg->header);
         
 
         
         // Publish result
-        cv_bridge::CvImage out_msg;
-        out_msg.header = dual_fisheye_msg->header;
-        out_msg.encoding = "rgb8";
-        out_msg.image = perspective_img;
-        perspective_pub_->publish(*out_msg.toImageMsg());
+        if (use_ros_topic_ && !use_gstreamer_ && perspective_pub_) {
+            cv_bridge::CvImage out_msg;
+            out_msg.header = dual_fisheye_msg->header;
+            out_msg.encoding = "rgb8";
+            out_msg.image = perspective_img;
+            perspective_pub_->publish(*out_msg.toImageMsg());
+        }
         
         auto process_time = (now() - start_time).seconds();
         RCLCPP_DEBUG(get_logger(), "Processing time: %.3f seconds", process_time);
@@ -294,6 +309,38 @@ void PerspectiveNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr dua
     } catch (const std::exception& e) {
         RCLCPP_ERROR(get_logger(), "Error processing images: %s", e.what());
     }
+}
+
+bool PerspectiveNode::writeGstreamerFrame(
+    const cv::Mat& image, const std_msgs::msg::Header& header)
+{
+    if (!use_gstreamer_ || gstreamer_pipeline_.empty()) {
+        return true;
+    }
+
+    if (use_ros_topic_) {
+        if (!gstreamer_ros_sink_) {
+            gstreamer_ros_sink_ = std::make_shared<GstreamerRosSink>(
+                shared_from_this(), "/perspective/image/h264");
+        }
+        return gstreamer_ros_sink_->write(image, header, gstreamer_pipeline_, gstreamer_fps_);
+    }
+
+    if (!gstreamer_writer_.isOpened()) {
+        if (!gstreamer_writer_.open(gstreamer_pipeline_, cv::CAP_GSTREAMER, 0,
+                                    gstreamer_fps_, image.size(), true)) {
+            RCLCPP_ERROR(get_logger(), "Could not open GStreamer pipeline: %s",
+                         gstreamer_pipeline_.c_str());
+            use_gstreamer_ = false;
+            return false;
+        }
+        RCLCPP_INFO(get_logger(), "GStreamer output started");
+    }
+
+    cv::Mat bgr_image;
+    cv::cvtColor(image, bgr_image, cv::COLOR_RGB2BGR);
+    gstreamer_writer_.write(bgr_image);
+    return true;
 }
 
 rcl_interfaces::msg::SetParametersResult PerspectiveNode::parametersCallback(
@@ -328,6 +375,18 @@ for (const auto &param : parameters)
         else if (param.get_name() == "gpu") {
             gpu_enabled_ = param.as_bool();
             update_needed = true;
+        }
+        else if (param.get_name() == "use_gstreamer") {
+            use_gstreamer_ = param.as_bool();
+            gstreamer_writer_.release();
+        }
+        else if (param.get_name() == "gstreamer_pipeline") {
+            gstreamer_pipeline_ = param.as_string();
+            gstreamer_writer_.release();
+        }
+        else if (param.get_name() == "gstreamer_fps") {
+            gstreamer_fps_ = param.as_double();
+            gstreamer_writer_.release();
         }
         else if (param.get_name() == "translation") {
             auto translation = param.as_double_array();

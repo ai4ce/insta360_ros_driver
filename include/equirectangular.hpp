@@ -5,9 +5,12 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
 #include <memory>
 #include <mutex>
 #include <atomic>
+#include <string>
+#include "gstreamer_ros_sink.hpp"
 
 class EquirectangularNode : public rclcpp::Node
 {
@@ -24,6 +27,7 @@ private:
     void loadParameters();
     void updateCameraParameters();
     void initMapping(int img_height, int img_width);
+    bool writeGstreamerFrame(const cv::Mat& image, const std_msgs::msg::Header& header);
     
     // Processing functions
     cv::Mat createEquirectangular(const cv::Mat& front_img, const cv::Mat& back_img);
@@ -42,6 +46,12 @@ private:
     bool gpu_enabled_;
     int out_width_;
     int out_height_;
+    bool use_ros_topic_;
+    bool use_gstreamer_;
+    std::string gstreamer_pipeline_;
+    double gstreamer_fps_;
+    cv::VideoWriter gstreamer_writer_;
+    std::shared_ptr<GstreamerRosSink> gstreamer_ros_sink_;
     
     // Camera parameters
     double cx_, cy_;

@@ -88,6 +88,64 @@ The launch file has the following optional arguments:
 This publishes equirectangular images. You can configure these parameters in `config/equirectangular.yaml`.
 ![equirectangular](docs/equirectangular.png)
 
+#### Optional GStreamer Output
+
+Both projection nodes can send their generated frames to a GStreamer pipeline and/or a ROS image topic. Set these parameters in the corresponding YAML file:
+
+Use the same parameters in `config/perspective.yaml` for the perspective stream.
+
+ROS-only mode publishes the raw image topic:
+
+```yaml
+use_ros_topic: true
+use_gstreamer: false
+```
+
+GStreamer-only mode sends directly to the configured GStreamer destination:
+
+```yaml
+use_ros_topic: false
+use_gstreamer: true
+gstreamer_pipeline: "appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=4000 speed-preset=ultrafast ! rtph264pay pt=96 config-interval=1 ! udpsink host=127.0.0.1 port=5000"
+gstreamer_fps: 30.0
+```
+
+When both booleans are true, the encoded GStreamer stream is published through ROS as `sensor_msgs/CompressedImage`:
+
+```yaml
+use_ros_topic: true
+use_gstreamer: true
+gstreamer_pipeline: "appsrc name=ros_source ! videoconvert ! x264enc tune=zerolatency bitrate=4000 speed-preset=ultrafast ! h264parse ! appsink name=ros_sink sync=false"
+gstreamer_fps: 30.0
+```
+
+This creates `/equirectangular/image/h264` or `/perspective/image/h264`, with `format: h264`. The combined pipeline must contain `appsrc name=ros_source` and `appsink name=ros_sink`. The OpenCV installation must have GStreamer support enabled, and the development/runtime packages must be installed, for example `libgstreamer1.0-dev`, `libgstreamer-plugins-base1.0-dev`, `gstreamer1.0-plugins-good`, and `gstreamer1.0-plugins-ugly`.
+
+#### Receiving the ROS-GStreamer Stream
+
+The package includes a receiver node that subscribes to the H.264 ROS topic and feeds each message into GStreamer:
+
+```bash
+ros2 run insta360_ros_driver ros_gstreamer_receiver.py \
+  --ros-args -p topic:=/perspective/image/h264 -p fps:=30.0
+```
+
+Use `/equirectangular/image/h264` for the equirectangular stream. The receiver displays the decoded video with `autovideosink`. It requires `python3-gi`, `gstreamer1.0-plugins-base`, and an H.264 decoder such as `gstreamer1.0-libav`:
+
+```bash
+sudo apt install python3-gi gstreamer1.0-plugins-base gstreamer1.0-libav
+```
+
+Both machines must be able to discover each other through ROS 2 DDS and use the same `ROS_DOMAIN_ID`.
+
+Set both booleans to `false` only if another output is added.
+
+For the direct UDP mode, receive the stream with:
+
+```bash
+gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000" ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
+```
+
 - imu_filter (default="true")
 
 This uses the [imu_filter_madgwick](https://wiki.ros.org/imu_filter_madgwick) package to approximate orientation from the IMU. Note that by default, we publish `/imu/data_raw` which only contains linear acceleration and angular velocity. The madgwick filter uses this information to publish orientation to `/imu/data`. You can configure the filter in `config/imu_filter.yaml`. 

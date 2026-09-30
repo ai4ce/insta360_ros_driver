@@ -6,14 +6,17 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
+#include <opencv2/videoio.hpp>
 #include <Eigen/Dense>
 #include <memory>
 #include <mutex>
 #include <atomic>
+#include <string>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <unsupported/Eigen/CXX11/Tensor>
+#include "gstreamer_ros_sink.hpp"
 
 // 3D coordinate view: (height*width, 3) matrix where each row = [X, Y, Z]
 typedef Eigen::TensorMap<Eigen::Tensor<float, 3, Eigen::RowMajor>> Tensor3D;
@@ -37,6 +40,7 @@ private:
     void loadParameters();
     void updateCameraParameters();
     void initMapping(int img_height, int img_width);
+    bool writeGstreamerFrame(const cv::Mat& image, const std_msgs::msg::Header& header);
     
     // Processing functions
     cv::Mat createPerspective(const cv::Mat& front_img, const cv::Mat& back_img);
@@ -56,6 +60,12 @@ private:
     bool gpu_enabled_;
     int out_width_;
     int out_height_;
+    bool use_ros_topic_;
+    bool use_gstreamer_;
+    std::string gstreamer_pipeline_;
+    double gstreamer_fps_;
+    cv::VideoWriter gstreamer_writer_;
+    std::shared_ptr<GstreamerRosSink> gstreamer_ros_sink_;
     float horizontal_fov_;
     float vertical_fov_;
     int crop_size_;

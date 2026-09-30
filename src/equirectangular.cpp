@@ -20,6 +20,10 @@ EquirectangularNode::EquirectangularNode()
     declare_parameter("gpu", true);
     declare_parameter("out_width", 1920);
     declare_parameter("out_height", 960);
+    declare_parameter("use_ros_topic", true);
+    declare_parameter("use_gstreamer", false);
+    declare_parameter("gstreamer_pipeline", std::string{});
+    declare_parameter("gstreamer_fps", 30.0);
     
     // Load parameters
     loadParameters();
@@ -42,8 +46,10 @@ EquirectangularNode::EquirectangularNode()
         "/dual_fisheye/image", qos,
         std::bind(&EquirectangularNode::imageCallback, this, std::placeholders::_1));
     
-    equirect_pub_ = create_publisher<sensor_msgs::msg::Image>(
-        "/equirectangular/image", qos);
+    if (use_ros_topic_ && !use_gstreamer_) {
+        equirect_pub_ = create_publisher<sensor_msgs::msg::Image>(
+            "/equirectangular/image", qos);
+    }
 }
 
 EquirectangularNode::~EquirectangularNode()
@@ -58,7 +64,11 @@ void EquirectangularNode::loadParameters()
         crop_size_ = get_parameter("crop_size").as_int();
         out_width_ = get_parameter("out_width").as_int();
         out_height_ = get_parameter("out_height").as_int();
+        use_ros_topic_ = get_parameter("use_ros_topic").as_bool();
         gpu_enabled_ = get_parameter("gpu").as_bool();
+        use_gstreamer_ = get_parameter("use_gstreamer").as_bool();
+        gstreamer_pipeline_ = get_parameter("gstreamer_pipeline").as_string();
+        gstreamer_fps_ = get_parameter("gstreamer_fps").as_double();
         
         auto translation = get_parameter("translation").as_double_array();
         tx_ = translation[0];
@@ -78,6 +88,7 @@ void EquirectangularNode::loadParameters()
                     rotation_deg[0], rotation_deg[1], rotation_deg[2]);
         RCLCPP_INFO(get_logger(), "  Output size: %dx%d", out_width_, out_height_);
         RCLCPP_INFO(get_logger(), "  GPU enabled: %s", gpu_enabled_ ? "true" : "false");
+        RCLCPP_INFO(get_logger(), "  GStreamer enabled: %s", use_gstreamer_ ? "true" : "false");
     } catch (const std::exception& e) {
         RCLCPP_ERROR(get_logger(), "Error loading parameters: %s", e.what());
         gpu_enabled_ = true;
@@ -299,16 +310,20 @@ void EquirectangularNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr
         auto start_time = now();
         // 3. Single Remap (Directly from Raw to Equirectangular)
         cv::remap(cv_ptr->image, equirect_img, full_map_x_, full_map_y_, cv::INTER_LINEAR);
+
+        writeGstreamerFrame(equirect_img, dual_fisheye_msg->header);
         
         
         //cv::Mat equirect_img = createEquirectangular(front_img, back_img);
         
         // Publish result
-        cv_bridge::CvImage out_msg;
-        out_msg.header = dual_fisheye_msg->header;
-        out_msg.encoding = "rgb8";
-        out_msg.image = equirect_img;
-        equirect_pub_->publish(*out_msg.toImageMsg());
+        if (use_ros_topic_ && !use_gstreamer_ && equirect_pub_) {
+            cv_bridge::CvImage out_msg;
+            out_msg.header = dual_fisheye_msg->header;
+            out_msg.encoding = "rgb8";
+            out_msg.image = equirect_img;
+            equirect_pub_->publish(*out_msg.toImageMsg());
+        }
         
         auto process_time = (now() - start_time).seconds();
         RCLCPP_DEBUG(get_logger(), "Processing time: %.3f seconds", process_time);
@@ -318,6 +333,38 @@ void EquirectangularNode::imageCallback(const sensor_msgs::msg::Image::SharedPtr
     } catch (const std::exception& e) {
         RCLCPP_ERROR(get_logger(), "Error processing images: %s", e.what());
     }
+}
+
+bool EquirectangularNode::writeGstreamerFrame(
+    const cv::Mat& image, const std_msgs::msg::Header& header)
+{
+    if (!use_gstreamer_ || gstreamer_pipeline_.empty()) {
+        return true;
+    }
+
+    if (use_ros_topic_) {
+        if (!gstreamer_ros_sink_) {
+            gstreamer_ros_sink_ = std::make_shared<GstreamerRosSink>(
+                shared_from_this(), "/equirectangular/image/h264");
+        }
+        return gstreamer_ros_sink_->write(image, header, gstreamer_pipeline_, gstreamer_fps_);
+    }
+
+    if (!gstreamer_writer_.isOpened()) {
+        if (!gstreamer_writer_.open(gstreamer_pipeline_, cv::CAP_GSTREAMER, 0,
+                                    gstreamer_fps_, image.size(), true)) {
+            RCLCPP_ERROR(get_logger(), "Could not open GStreamer pipeline: %s",
+                         gstreamer_pipeline_.c_str());
+            use_gstreamer_ = false;
+            return false;
+        }
+        RCLCPP_INFO(get_logger(), "GStreamer output started");
+    }
+
+    cv::Mat bgr_image;
+    cv::cvtColor(image, bgr_image, cv::COLOR_RGB2BGR);
+    gstreamer_writer_.write(bgr_image);
+    return true;
 }
 
 rcl_interfaces::msg::SetParametersResult EquirectangularNode::parametersCallback(
@@ -352,6 +399,18 @@ for (const auto &param : parameters)
         else if (param.get_name() == "gpu") {
             gpu_enabled_ = param.as_bool();
             update_needed = true;
+        }
+        else if (param.get_name() == "use_gstreamer") {
+            use_gstreamer_ = param.as_bool();
+            gstreamer_writer_.release();
+        }
+        else if (param.get_name() == "gstreamer_pipeline") {
+            gstreamer_pipeline_ = param.as_string();
+            gstreamer_writer_.release();
+        }
+        else if (param.get_name() == "gstreamer_fps") {
+            gstreamer_fps_ = param.as_double();
+            gstreamer_writer_.release();
         }
         else if (param.get_name() == "translation") {
             auto translation = param.as_double_array();
