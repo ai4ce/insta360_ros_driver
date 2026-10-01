@@ -56,7 +56,7 @@ bool GstreamerRosSink::open(const cv::Size& image_size,
     gst_app_src_set_caps(appsrc_, caps);
     gst_caps_unref(caps);
     gst_app_src_set_stream_type(appsrc_, GST_APP_STREAM_TYPE_STREAM);
-    gst_app_src_set_format(appsrc_, GST_FORMAT_TIME);
+    g_object_set(G_OBJECT(appsrc_), "format", GST_FORMAT_TIME, nullptr);
     gst_app_sink_set_drop(appsink_, true);
     gst_app_sink_set_max_buffers(appsink_, 1);
 

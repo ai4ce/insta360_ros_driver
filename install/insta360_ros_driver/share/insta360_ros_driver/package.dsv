@@ -1,0 +1,8 @@
+source;share/insta360_ros_driver/hook/cmake_prefix_path.ps1
+source;share/insta360_ros_driver/hook/cmake_prefix_path.dsv
+source;share/insta360_ros_driver/hook/cmake_prefix_path.sh
+source;share/insta360_ros_driver/local_setup.bash
+source;share/insta360_ros_driver/local_setup.dsv
+source;share/insta360_ros_driver/local_setup.ps1
+source;share/insta360_ros_driver/local_setup.sh
+source;share/insta360_ros_driver/local_setup.zsh

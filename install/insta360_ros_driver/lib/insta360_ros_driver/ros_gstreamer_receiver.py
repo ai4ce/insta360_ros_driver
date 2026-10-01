@@ -1,0 +1,1 @@
+/camera_ws/src/insta360_ros_driver/scripts/ros_gstreamer_receiver.py

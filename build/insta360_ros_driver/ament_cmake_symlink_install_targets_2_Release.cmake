@@ -1,0 +1,1 @@
+ament_cmake_symlink_install_targets("TARGET_FILES" "/camera_ws/src/insta360_ros_driver/build/insta360_ros_driver/equirectangular_cpp" "/camera_ws/src/insta360_ros_driver/build/insta360_ros_driver/perspective_cpp" "TARGETS" "equirectangular_cpp" "perspective_cpp" "DESTINATION" "lib/insta360_ros_driver")

@@ -1,0 +1,3 @@
+source;share/insta360_ros_driver/environment/ament_prefix_path.sh
+source;share/insta360_ros_driver/environment/path.sh
+source;share/insta360_ros_driver/environment/pythonpath.sh

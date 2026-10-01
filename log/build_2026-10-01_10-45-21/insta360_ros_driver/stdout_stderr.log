@@ -1,0 +1,146 @@
+-- The C compiler identification is GNU 11.4.0
+-- The CXX compiler identification is GNU 11.4.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found Python3: /usr/bin/python3 (found version "3.10.12") found components: Interpreter 
+-- Override CMake install command with custom implementation using symlinks instead of copying resources
+-- Found rclcpp: 16.0.18 (/opt/ros/humble/share/rclcpp/cmake)
+-- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+-- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+-- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.0.2")  
+-- Found FastRTPS: /opt/ros/humble/include  
+-- Using RMW implementation 'rmw_fastrtps_cpp' as default
+-- Looking for pthread.h
+-- Looking for pthread.h - found
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE  
+-- Found camera_info_manager: 3.1.12 (/opt/ros/humble/share/camera_info_manager/cmake)
+-- Found cv_bridge: 3.2.1 (/opt/ros/humble/share/cv_bridge/cmake)
+-- Found image_transport: 3.1.12 (/opt/ros/humble/share/image_transport/cmake)
+-- Found std_srvs: 4.9.1 (/opt/ros/humble/share/std_srvs/cmake)
+-- Found imu_tools: 2.1.5 (/opt/ros/humble/share/imu_tools/cmake)
+-- Found OpenCV: /usr (found version "4.5.4") 
+-- Found PkgConfig: /usr/bin/pkg-config (found version "0.29.2") 
+-- Found tf2_geometry_msgs: 0.25.19 (/opt/ros/humble/share/tf2_geometry_msgs/cmake)
+-- Found eigen3_cmake_module: 0.1.1 (/opt/ros/humble/share/eigen3_cmake_module/cmake)
+-- Found Eigen3: TRUE (found version "3.4.0") 
+-- Ensuring Eigen3 include directory is part of orocos-kdl CMake target
+-- Checking for module 'libavcodec'
+--   Found libavcodec, version 58.134.100
+-- Checking for module 'libavformat'
+--   Found libavformat, version 58.76.100
+-- Checking for module 'libavutil'
+--   Found libavutil, version 56.70.100
+-- Checking for one of the modules 'libswscale'
+-- Checking for modules 'gstreamer-1.0;gstreamer-app-1.0'
+--   Found gstreamer-1.0, version 1.20.3
+--   Found gstreamer-app-1.0, version 1.20.1
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /camera_ws/src/insta360_ros_driver/build/insta360_ros_driver
+[ 10%] [32mBuilding CXX object CMakeFiles/equirectangular_cpp.dir/src/equirectangular.cpp.o[0m
+[ 20%] [32mBuilding CXX object CMakeFiles/insta360_ros_driver.dir/src/main.cpp.o[0m
+[ 30%] [32mBuilding CXX object CMakeFiles/perspective_cpp.dir/src/perspective.cpp.o[0m
+[ 40%] [32mBuilding CXX object CMakeFiles/decoder.dir/src/decoder.cpp.o[0m
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:[m[K In member function ‘[01m[Kvirtual void TestStreamDelegate::OnAudioData(const uint8_t*, size_t, int64_t)[m[K’:
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:37:37:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Kdata[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   37 |     void OnAudioData([01;35m[Kconst uint8_t* data[m[K, size_t size, int64_t timestamp) override {}
+      |                      [01;35m[K~~~~~~~~~~~~~~~^~~~[m[K
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:37:50:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Ksize[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   37 |     void OnAudioData(const uint8_t* data, [01;35m[Ksize_t size[m[K, int64_t timestamp) override {}
+      |                                           [01;35m[K~~~~~~~^~~~[m[K
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:37:64:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Ktimestamp[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   37 |  void OnAudioData(const uint8_t* data, size_t size, [01;35m[Kint64_t timestamp[m[K) override {}
+      |                                                     [01;35m[K~~~~~~~~^~~~~~~~~[m[K
+
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:[m[K In member function ‘[01m[Kvirtual void TestStreamDelegate::OnVideoData(const uint8_t*, size_t, int64_t, uint8_t, int)[m[K’:
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:39:64:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Ktimestamp[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   39 |  void OnVideoData(const uint8_t* data, size_t size, [01;35m[Kint64_t timestamp[m[K, uint8_t streamType, int stream_index) override {
+      |                                                     [01;35m[K~~~~~~~~^~~~~~~~~[m[K
+
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:39:83:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[KstreamType[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   39 | onst uint8_t* data, size_t size, int64_t timestamp, [01;35m[Kuint8_t streamType[m[K, int stream_index) override {
+      |                                                     [01;35m[K~~~~~~~~^~~~~~~~~~[m[K
+
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:[m[K In member function ‘[01m[Kvirtual void TestStreamDelegate::OnExposureData(const ins_camera::ExposureData&)[m[K’:
+[01m[K/camera_ws/src/insta360_ros_driver/src/main.cpp:87:57:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Kdata[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   87 |     void OnExposureData([01;35m[Kconst ins_camera::ExposureData& data[m[K) override {}
+      |                         [01;35m[K~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~[m[K
+[01m[K/camera_ws/src/insta360_ros_driver/src/decoder.cpp:[m[K In function ‘[01m[KAVPixelFormat get_hw_format(AVCodecContext*, const AVPixelFormat*)[m[K’:
+[01m[K/camera_ws/src/insta360_ros_driver/src/decoder.cpp:25:57:[m[K [01;35m[Kwarning: [m[Kunused parameter ‘[01m[Kctx[m[K’ [[01;35m[K]8;;https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wunused-parameter-Wunused-parameter]8;;[m[K]
+   25 | static enum AVPixelFormat get_hw_format([01;35m[KAVCodecContext *ctx[m[K, const enum AVPixelFormat *pix_fmts) {
+      |                                         [01;35m[K~~~~~~~~~~~~~~~~^~~[m[K
+[ 50%] [32m[1mLinking CXX executable insta360_ros_driver[0m
+[ 50%] Built target insta360_ros_driver
+[ 60%] [32mBuilding CXX object CMakeFiles/equirectangular_cpp.dir/src/gstreamer_ros_sink.cpp.o[0m
+[ 70%] [32m[1mLinking CXX executable decoder[0m
+[ 70%] Built target decoder
+[ 80%] [32mBuilding CXX object CMakeFiles/perspective_cpp.dir/src/gstreamer_ros_sink.cpp.o[0m
+[ 90%] [32m[1mLinking CXX executable equirectangular_cpp[0m
+[ 90%] Built target equirectangular_cpp
+[100%] [32m[1mLinking CXX executable perspective_cpp[0m
+[100%] Built target perspective_cpp
+[100%] Built target ament_cmake_python_symlink_insta360_ros_driver
+running egg_info
+creating insta360_ros_driver.egg-info
+writing insta360_ros_driver.egg-info/PKG-INFO
+writing dependency_links to insta360_ros_driver.egg-info/dependency_links.txt
+writing top-level names to insta360_ros_driver.egg-info/top_level.txt
+writing manifest file 'insta360_ros_driver.egg-info/SOURCES.txt'
+reading manifest file 'insta360_ros_driver.egg-info/SOURCES.txt'
+writing manifest file 'insta360_ros_driver.egg-info/SOURCES.txt'
+[100%] Built target ament_cmake_python_build_insta360_ros_driver_egg
+-- Install configuration: "Release"
+-- Execute custom install script
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/config/equirectangular.yaml
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/config/imu_filter.yaml
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/config/perspective.yaml
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/launch/bringup.launch.xml
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/lib/.gitkeep
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/lib/libCameraSDK.so
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/insta360_ros_driver
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/decoder
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/equirectangular_cpp
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/perspective_cpp
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/pythonpath.sh
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/pythonpath.dsv
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver-1.0.0-py3.10.egg-info/PKG-INFO
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver-1.0.0-py3.10.egg-info/SOURCES.txt
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver-1.0.0-py3.10.egg-info/dependency_links.txt
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver-1.0.0-py3.10.egg-info/top_level.txt
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver/__init__.py
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/equirectangular.py
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/calibrate.py
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/lib/insta360_ros_driver/ros_gstreamer_receiver.py
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/ament_index/resource_index/package_run_dependencies/insta360_ros_driver
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/ament_index/resource_index/parent_prefix_path/insta360_ros_driver
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/ament_prefix_path.sh
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/ament_prefix_path.dsv
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/path.sh
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/environment/path.dsv
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/local_setup.bash
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/local_setup.sh
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/local_setup.zsh
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/local_setup.dsv
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/package.dsv
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/ament_index/resource_index/packages/insta360_ros_driver
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/cmake/insta360_ros_driverConfig.cmake
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/cmake/insta360_ros_driverConfig-version.cmake
+-- Symlinking: /camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/share/insta360_ros_driver/package.xml
+Listing '/camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver'...
+Compiling '/camera_ws/src/insta360_ros_driver/install/insta360_ros_driver/local/lib/python3.10/dist-packages/insta360_ros_driver/__init__.py'...
