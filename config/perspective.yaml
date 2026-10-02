@@ -2,7 +2,7 @@ perspective_node:
   ros__parameters:
     cx_offset: 0.0
     cy_offset: 0.0
-    crop_size: 960
+    crop_size: 0
     translation: [0.0, 0.0, -0.105]
     rotation_deg: [-0.5, 0.0, 1.1]
     gpu: true
