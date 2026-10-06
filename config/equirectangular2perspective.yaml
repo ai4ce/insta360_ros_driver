@@ -1,0 +1,6 @@
+equirectangular2perspective_node:
+  ros__parameters:
+    out_width: 1920
+    out_height: 960
+    horizontal_fov: 120.0
+    vertical_fov: 81.7867893

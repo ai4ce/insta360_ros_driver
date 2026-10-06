@@ -1,6 +1,0 @@
-setup.py
-insta360_ros_driver/__init__.py
-insta360_ros_driver.egg-info/PKG-INFO
-insta360_ros_driver.egg-info/SOURCES.txt
-insta360_ros_driver.egg-info/dependency_links.txt
-insta360_ros_driver.egg-info/top_level.txt

@@ -1,1 +1,0 @@
-ament_cmake_symlink_install_targets("TARGET_FILES" "/camera_ws/src/insta360_ros_driver/build/insta360_ros_driver/insta360_ros_driver" "TARGETS" "insta360_ros_driver" "DESTINATION" "lib/insta360_ros_driver")

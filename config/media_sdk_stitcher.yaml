@@ -1,0 +1,12 @@
+media_sdk_stitcher:
+  ros__parameters:
+    input_video_topic: /dual_fisheye/image/compressed
+    input_imu_topic: /imu/data_raw
+    output_topic: /equirectangular/image
+    output_width: 1920
+    output_height: 960
+    stitch_type: dynamicstitch
+    enable_flowstate: false
+    enable_direction_lock: false
+    enable_deflicker: false
+    enable_defringe: false

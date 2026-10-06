@@ -1,1 +1,0 @@
-camera_info_manager;cv_bridge;eigen;eigen3_cmake_module;image_transport;geometry_msgs;sensor_msgs;std_msgs;std_srvs;imu_tools;python3-gi;ament_lint_auto;ament_lint_common

@@ -1,1 +1,0 @@
-/camera_ws/src/insta360_ros_driver/insta360_ros_driver/__init__.py
