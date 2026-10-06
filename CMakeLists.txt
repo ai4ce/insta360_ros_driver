@@ -107,10 +107,6 @@ add_executable(gstreamer_decoder src/gstreamer_decoder.cpp)
 ament_target_dependencies(gstreamer_decoder rclcpp cv_bridge sensor_msgs std_msgs OpenCV)
 target_link_libraries(gstreamer_decoder ${GSTREAMER_LIBRARIES})
 
-add_executable(ros_gstreamer_receiver src/ros_gstreamer_receiver.cpp)
-ament_target_dependencies(ros_gstreamer_receiver rclcpp sensor_msgs)
-target_link_libraries(ros_gstreamer_receiver ${GSTREAMER_LIBRARIES})
-
 add_executable(media_sdk_stitcher src/media_sdk_stitcher.cpp)
 ament_target_dependencies(media_sdk_stitcher rclcpp sensor_msgs cv_bridge rosidl_default_runtime)
 target_include_directories(media_sdk_stitcher PRIVATE ${MEDIA_SDK_INCLUDE_DIR})
@@ -163,7 +159,6 @@ install(TARGETS
   equirectangular2perspective_cpp
   gstreamer_encoder
   gstreamer_decoder
-  ros_gstreamer_receiver
   media_sdk_stitcher
   webcam_equirectangular
   DESTINATION lib/${PROJECT_NAME}

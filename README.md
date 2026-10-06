@@ -162,13 +162,6 @@ ros2 run insta360_ros_driver gstreamer_encoder --ros-args \
   -p pipeline:="appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=4000 ! rtph264pay pt=96 ! udpsink host=192.168.1.50 port=5000"
 ```
 
-ROS transport publishes H.264 `sensor_msgs/CompressedImage` messages with `format: h264`. Receive them with the C++ receiver:
-
-```bash
-ros2 run insta360_ros_driver ros_gstreamer_receiver --ros-args \
-  -p topic:=/equirectangular/image/h264
-```
-
 To decode an H.264 ROS topic back to a raw image topic:
 
 ```bash
