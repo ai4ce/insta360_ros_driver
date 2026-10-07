@@ -84,14 +84,21 @@ A dual fisheye image will be published.
 
 #### MediaSDK Realtime Stitching
 
-The provided MediaSDK package contains `ins::RealTimeStitcher`, which accepts the
-camera's H.264/H.265 access units and IMU data and returns stitched frames. Install
-the supplied Debian package first.The package is contained in before mentioned SDK that you have to apply for [Insta360 website](https://www.insta360.com/sdk/home):
+The MediaSDK package contains `ins::RealTimeStitcher`, which accepts the
+camera's H.264/H.265 access units and IMU data and returns stitched frames. The
+package is contained in the SDK that you have to apply for on the [Insta360 website](https://www.insta360.com/sdk/home).
+
+Place the supplied Debian package at this exact path in the ROS package:
 
 ```bash
-sudo apt install ./libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb
+lib/libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb
 ```
-To compile against a non-system SDK prefix:
+
+The default CMake configuration extracts this package into the build directory
+automatically; no system-wide installation is required. Rebuild after adding or
+replacing the package file. To use an SDK installed somewhere else instead, set
+its prefix explicitly:
+
 
 ```bash
 colcon build --symlink-install --cmake-args \

@@ -23,11 +23,47 @@ find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
-set(INSTA360_MEDIA_SDK_ROOT "/usr" CACHE PATH "Insta360 MediaSDK installation prefix")
+set(INSTA360_MEDIA_SDK_ROOT "" CACHE PATH "Insta360 MediaSDK installation prefix (overrides the bundled Debian package)")
+set(INSTA360_MEDIA_SDK_DEB
+  "${PROJECT_SOURCE_DIR}/lib/libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb"
+  CACHE FILEPATH "Insta360 MediaSDK Debian package")
+
+if(INSTA360_MEDIA_SDK_ROOT STREQUAL "/usr" AND EXISTS "${INSTA360_MEDIA_SDK_DEB}")
+  unset(INSTA360_MEDIA_SDK_ROOT CACHE)
+  set(INSTA360_MEDIA_SDK_ROOT "")
+endif()
+
+if(INSTA360_MEDIA_SDK_ROOT)
+  set(MEDIA_SDK_ROOT "${INSTA360_MEDIA_SDK_ROOT}")
+else()
+  if(NOT EXISTS "${INSTA360_MEDIA_SDK_DEB}")
+    message(FATAL_ERROR
+      "MediaSDK package not found at ${INSTA360_MEDIA_SDK_DEB}. "
+      "Place libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb in the package lib directory, "
+      "or set INSTA360_MEDIA_SDK_ROOT to an installed SDK prefix.")
+  endif()
+
+  find_program(DPKG_DEB_EXECUTABLE dpkg-deb REQUIRED)
+  set(MEDIA_SDK_EXTRACT_DIR "${CMAKE_CURRENT_BINARY_DIR}/media_sdk")
+  execute_process(
+    COMMAND "${DPKG_DEB_EXECUTABLE}" -x "${INSTA360_MEDIA_SDK_DEB}" "${MEDIA_SDK_EXTRACT_DIR}"
+    RESULT_VARIABLE MEDIA_SDK_EXTRACT_RESULT
+    OUTPUT_VARIABLE MEDIA_SDK_EXTRACT_OUTPUT
+    ERROR_VARIABLE MEDIA_SDK_EXTRACT_ERROR
+  )
+  if(NOT MEDIA_SDK_EXTRACT_RESULT EQUAL 0)
+    message(FATAL_ERROR
+      "Failed to extract MediaSDK package ${INSTA360_MEDIA_SDK_DEB}:\n${MEDIA_SDK_EXTRACT_ERROR}")
+  endif()
+
+  set(MEDIA_SDK_ROOT "${MEDIA_SDK_EXTRACT_DIR}/usr")
+  set(MEDIA_SDK_FROM_BUNDLED_PACKAGE TRUE)
+endif()
+
 find_path(MEDIA_SDK_INCLUDE_DIR ins_realtime_stitcher.h
-  PATHS "${INSTA360_MEDIA_SDK_ROOT}/include" /usr/include REQUIRED)
+  PATHS "${MEDIA_SDK_ROOT}/include" /usr/include REQUIRED)
 find_library(MEDIA_SDK_LIBRARY MediaSDK
-  PATHS "${INSTA360_MEDIA_SDK_ROOT}/lib" /usr/lib /usr/lib/x86_64-linux-gnu REQUIRED)
+  PATHS "${MEDIA_SDK_ROOT}/lib" /usr/lib /usr/lib/x86_64-linux-gnu REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_interfaces
   "msg/CameraPreviewInfo.msg"
@@ -77,7 +113,8 @@ ament_target_dependencies(${PROJECT_NAME}
   OpenCV
 )
 target_link_libraries(${PROJECT_NAME} CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
-rosidl_target_interfaces(${PROJECT_NAME} ${PROJECT_NAME}_interfaces "rosidl_typesupport_cpp")
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_interfaces "rosidl_typesupport_cpp")
+target_link_libraries(${PROJECT_NAME} "${cpp_typesupport_target}")
 
 install(TARGETS ${PROJECT_NAME}
   DESTINATION lib/${PROJECT_NAME}
@@ -111,7 +148,15 @@ add_executable(media_sdk_stitcher src/media_sdk_stitcher.cpp)
 ament_target_dependencies(media_sdk_stitcher rclcpp sensor_msgs cv_bridge rosidl_default_runtime)
 target_include_directories(media_sdk_stitcher PRIVATE ${MEDIA_SDK_INCLUDE_DIR})
 target_link_libraries(media_sdk_stitcher ${MEDIA_SDK_LIBRARY} pthread)
-rosidl_target_interfaces(media_sdk_stitcher ${PROJECT_NAME}_interfaces "rosidl_typesupport_cpp")
+if(MEDIA_SDK_FROM_BUNDLED_PACKAGE)
+  set_target_properties(media_sdk_stitcher PROPERTIES INSTALL_RPATH "$ORIGIN/media_sdk")
+  install(
+    DIRECTORY "${MEDIA_SDK_ROOT}/lib/"
+    DESTINATION lib/${PROJECT_NAME}/media_sdk
+    FILES_MATCHING PATTERN "*.so*"
+  )
+endif()
+target_link_libraries(media_sdk_stitcher "${cpp_typesupport_target}")
 
 add_executable(webcam_equirectangular src/webcam_equirectangular.cpp)
 ament_target_dependencies(webcam_equirectangular rclcpp sensor_msgs cv_bridge OpenCV)
