@@ -65,7 +65,7 @@ find_path(MEDIA_SDK_INCLUDE_DIR ins_realtime_stitcher.h
 find_library(MEDIA_SDK_LIBRARY MediaSDK
   PATHS "${MEDIA_SDK_ROOT}/lib" /usr/lib /usr/lib/x86_64-linux-gnu REQUIRED)
 
-rosidl_generate_interfaces(${PROJECT_NAME}_interfaces
+rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/CameraPreviewInfo.msg"
   DEPENDENCIES std_msgs
 )
@@ -101,8 +101,9 @@ install(
   DESTINATION include
 )
 
-add_executable(${PROJECT_NAME} src/main.cpp)
-ament_target_dependencies(${PROJECT_NAME}
+add_executable(${PROJECT_NAME}_node src/main.cpp)
+set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
+ament_target_dependencies(${PROJECT_NAME}_node
   rclcpp
   rosidl_default_runtime
   camera_info_manager
@@ -112,11 +113,11 @@ ament_target_dependencies(${PROJECT_NAME}
   std_srvs
   OpenCV
 )
-target_link_libraries(${PROJECT_NAME} CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_interfaces "rosidl_typesupport_cpp")
-target_link_libraries(${PROJECT_NAME} "${cpp_typesupport_target}")
+target_link_libraries(${PROJECT_NAME}_node CameraSDK  ${OpenCV_LIBRARIES} ${AVCODEC_LIBRARIES} ${AVFORMAT_LIBRARIES} ${AVUTIL_LIBRARIES} ${SWSCALE_LIBRARIES})
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+target_link_libraries(${PROJECT_NAME}_node "${cpp_typesupport_target}")
 
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME}_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

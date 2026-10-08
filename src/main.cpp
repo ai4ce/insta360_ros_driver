@@ -105,6 +105,12 @@ public:
 
     int run_camera() {
         ins_camera::DeviceDiscovery discovery;
+
+        rclcpp::QoS metadata_qos(1);
+        metadata_qos.reliable().transient_local();
+        metadata_pub_ = node_->create_publisher<insta360_ros_driver::msg::CameraPreviewInfo>(
+            "/insta360/camera_preview_info", metadata_qos);
+
         auto list = discovery.GetAvailableDevices();
         if (list.empty()) {
             RCLCPP_ERROR(node_->get_logger(), "No available camera devices found.");
@@ -119,10 +125,7 @@ public:
         RCLCPP_INFO(node_->get_logger(), "Camera opened successfully.");
 
         auto preview = cam->GetPreviewParam();
-        rclcpp::QoS metadata_qos(1);
-        metadata_qos.reliable().transient_local();
-        metadata_pub_ = node_->create_publisher<insta360_ros_driver::msg::CameraPreviewInfo>(
-            "/insta360/camera_preview_info", metadata_qos);
+
         auto metadata = std::make_unique<insta360_ros_driver::msg::CameraPreviewInfo>();
         metadata->header.stamp = node_->get_clock()->now();
         metadata->header.frame_id = "camera_frame";
