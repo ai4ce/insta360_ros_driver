@@ -12,6 +12,7 @@
 #include "rclcpp/qos.hpp"
 #include "sensor_msgs/msg/compressed_image.hpp"
 #include "sensor_msgs/msg/imu.hpp"
+#include "insta360_ros_driver/msg/camera_preview_info.hpp"
 
 class TestStreamDelegate : public ins_camera::StreamDelegate {
 private:
@@ -24,7 +25,7 @@ public:
         // Publisher for the compressed H.264 video stream
         compressed_pub_ = node_->create_publisher<sensor_msgs::msg::CompressedImage>(
             "/dual_fisheye/image/compressed", 
-            rclcpp::QoS(10)
+            rclcpp::SensorDataQoS()
         );
 
         // Publisher for IMU data (remains the same)
@@ -91,6 +92,7 @@ class CameraWrapper {
 private:
     std::shared_ptr<ins_camera::Camera> cam;
     std::shared_ptr<rclcpp::Node> node_;
+    rclcpp::Publisher<insta360_ros_driver::msg::CameraPreviewInfo>::SharedPtr metadata_pub_;
 
 public:
     CameraWrapper(const std::shared_ptr<rclcpp::Node>& node) : node_(node) {}
@@ -103,6 +105,12 @@ public:
 
     int run_camera() {
         ins_camera::DeviceDiscovery discovery;
+
+        rclcpp::QoS metadata_qos(1);
+        metadata_qos.reliable().transient_local();
+        metadata_pub_ = node_->create_publisher<insta360_ros_driver::msg::CameraPreviewInfo>(
+            "/insta360/camera_preview_info", metadata_qos);
+
         auto list = discovery.GetAvailableDevices();
         if (list.empty()) {
             RCLCPP_ERROR(node_->get_logger(), "No available camera devices found.");
@@ -115,6 +123,23 @@ public:
             return -1;
         }
         RCLCPP_INFO(node_->get_logger(), "Camera opened successfully.");
+
+        auto preview = cam->GetPreviewParam();
+
+        auto metadata = std::make_unique<insta360_ros_driver::msg::CameraPreviewInfo>();
+        metadata->header.stamp = node_->get_clock()->now();
+        metadata->header.frame_id = "camera_frame";
+        metadata->camera_name = preview.camera_name;
+        metadata->decode_type = preview.encode_type == ins_camera::VideoEncodeType::H265 ? "h265" : "h264";
+        metadata->crop_src_width = preview.crop_info.src_width;
+        metadata->crop_src_height = preview.crop_info.src_height;
+        metadata->crop_dst_width = preview.crop_info.dst_width;
+        metadata->crop_dst_height = preview.crop_info.dst_height;
+        metadata->crop_offset_x = preview.crop_info.crop_offset_x;
+        metadata->crop_offset_y = preview.crop_info.crop_offset_y;
+        metadata->camera_offset = preview.offset;
+        metadata_pub_->publish(std::move(metadata));
+        RCLCPP_INFO(node_->get_logger(), "Published camera preview metadata for %s", preview.camera_name.c_str());
         discovery.FreeDeviceDescriptors(list);
 
         std::shared_ptr<ins_camera::StreamDelegate> delegate = std::make_shared<TestStreamDelegate>(node_);

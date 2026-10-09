@@ -1,5 +1,5 @@
-#ifndef EQUIRECTANGULAR_HPP
-#define EQUIRECTANGULAR_HPP
+#ifndef DUAL_FISHEYE2EQUIRECTANGULAR_HPP
+#define DUAL_FISHEYE2EQUIRECTANGULAR_HPP
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -8,12 +8,13 @@
 #include <memory>
 #include <mutex>
 #include <atomic>
+#include <string>
 
-class EquirectangularNode : public rclcpp::Node
+class DualFisheye2EquirectangularNode : public rclcpp::Node
 {
 public:
-    explicit EquirectangularNode();
-    ~EquirectangularNode();
+    explicit DualFisheye2EquirectangularNode();
+    ~DualFisheye2EquirectangularNode();
 
 private:
     // Callback functions
@@ -25,12 +26,10 @@ private:
     void updateCameraParameters();
     void initMapping(int img_height, int img_width);
     
-    // Processing functions
-    cv::Mat createEquirectangular(const cv::Mat& front_img, const cv::Mat& back_img);
-    
     // ROS2 communication
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr dual_fisheye_sub_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr equirect_pub_;
+    rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr params_callback_handle;
     
     // Parameters
     double cx_offset_;
@@ -44,14 +43,20 @@ private:
     
     // Camera parameters
     double cx_, cy_;
-    cv::Mat back_to_front_rotation_;
+    cv::Matx33d back_to_front_rotation_;
     cv::Vec3d back_to_front_translation_;
     
     // Mapping matrices
-    cv::Mat front_map_x_, front_map_y_;
-    cv::Mat back_map_x_, back_map_y_;
-    cv::Mat front_mask_, back_mask_;
-    
+    cv::Mat full_map_x_;
+    cv::Mat full_map_y_;
+    // Images
+    cv::Mat equirect_img;
+    // init mapping matrices
+    cv::Mat x_grid, y_grid, x_range, y_range, longitude, latitude;
+    cv::Mat X, Y, Z;
+    cv::Mat cos_lat, sin_lat, cos_lon, sin_lon;
+    cv::Mat cos_latitude, sin_latitude;
+    cv::Mat front_mask_;
     // State management
     std::atomic<bool> maps_initialized_;
     std::atomic<bool> params_changed_;
@@ -62,4 +67,4 @@ private:
     std::mutex processing_mutex_;
 };
 
-#endif // EQUIRECTANGULAR_HPP
+#endif // DUAL_FISHEYE2EQUIRECTANGULAR_HPP

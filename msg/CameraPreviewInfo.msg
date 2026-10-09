@@ -1,0 +1,10 @@
+std_msgs/Header header
+string camera_name
+string decode_type
+uint32 crop_src_width
+uint32 crop_src_height
+uint32 crop_dst_width
+uint32 crop_dst_height
+int32 crop_offset_x
+int32 crop_offset_y
+string[] camera_offset

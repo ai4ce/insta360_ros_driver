@@ -1,0 +1,8 @@
+webcam_equirectangular:
+  ros__parameters:
+    device: /dev/video0
+    width: 1920
+    height: 960
+    fps: 30.0
+    topic: /equirectangular/image
+    pixel_format: MJPG
