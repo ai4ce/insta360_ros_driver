@@ -24,6 +24,6 @@ for i in {1..5}; do
 done
 
 if [ ! -e /dev/insta ]; then
-    echo "Error: /dev/insta was not created. Please check if the camera is connected and in the correct mode."
+    echo "Error: /dev/insta was not created. Please check if the camera is connected and in ANDROID mode."
     exit 1
 fi
