@@ -1,0 +1,21 @@
+{
+  mode: "router",
+
+  listen: {
+    endpoints: ["tcp/0.0.0.0:7447"]
+  },
+
+  connect: {
+    timeout_ms: { router: -1, peer: -1, client: 0 },
+
+    endpoints: [],
+
+    exit_on_failure: { router: false, peer: false, client: true },
+
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2
+    }
+  }
+}

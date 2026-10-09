@@ -8,12 +8,12 @@ A ROS driver for the Insta360 cameras. This driver is tested on Ubuntu 22.04 wit
 
 You can change [this line](https://github.com/ai4ce/insta360_ros_driver/blob/79588d9e0e9d029c3371d4095ea718daaf1e06fb/src/main.cpp#L126) to edit the resolution.
 
-## Installation
+## Driver Download and Camera Setup
 To use this driver, you need to first have Insta360 SDK. Please apply for the SDK from the [Insta360 website](https://www.insta360.com/sdk/home). 
 
 For additional instructions, see this [post](https://github.com/ai4ce/insta360_ros_driver/issues/10#issuecomment-3371481987).
 
-**Note: Please make you use the latest SDK. This package works with the SDK posted after April 23, 2025**
+**Note: Please make sure you use the latest SDK**
 
 ```
 cd ~/ros2_ws/src
@@ -24,16 +24,10 @@ Then, the Insta360 libraries need to be installed as follows:
 - add the <code>camera</code> and <code>stream</code> header files inside the <code>include</code> directory
 - add the <code>libCameraSDK.so</code> library under the <code>lib</code> directory.
 
-Afterwards, install the other required dependencies and build
-```
-rosdep install --from-paths src --ignore-src -r -y
-colcon build --symlink-install
-source install/setup.bash
-```
 
 The Insta360 X3 (and potentially other models) needs a micro-sd card inserted to use the API. Ensure this is done.
 
-Before continuing,  **make sure the camera is set to dual-lens mode**
+Before continuing, **make sure the camera is set to dual-lens mode**
 
 Additionally, **ensure the camera's USB mode is set to Android**:
 1. On the camera, swipe down the screen to the main menu
@@ -46,7 +40,7 @@ The Insta360 requires sudo privilege to be accessed via USB. To compensate for t
 cd ~/ros2_ws/src/insta360_ros_driver
 ./setup.sh
 ```
-This creates a symlink  based on the vendor ID of Insta360 cameras. The symlink, in this case <code>/dev/insta</code> is used to grant permissions to the usb port used by the camera.
+This creates a symlink based on the vendor ID of Insta360 cameras. The symlink, in this case <code>/dev/insta</code> is used to grant permissions to the usb port used by the camera.
 
 ![setup](docs/setup.png)
 
@@ -58,8 +52,73 @@ sudo udevadm trigger
 sudo chmod 777 /dev/insta
 ```
 
+## Installation
+
+You can proceed either with manual install or docker install.
+
+### Manual Installation
+
+You can install the driver manually on host. First, install the dependencies via rosdep and then build.
+
+```
+cd ~/ros2_ws
+rosdep install --from-paths src --ignore-src -r -y
+colcon build --symlink-install
+source install/setup.bash
+```
+
+Skip to the [usage](#usage) section below to proceed.
+
+### Docker Installation
+
+A docker container is available for development and it sets up the Zenoh RMW for best performance. Run the following: 
+
+```
+xhost +local:root
+cd docker
+docker compose down && docker compose up --build
+```
+
+Once you see the following message: 
+
+```
+insta360_ros_driver  | #All required rosdeps installed successfully
+insta360_ros_driver  | Starting >>> insta360_ros_driver
+insta360_ros_driver  | Finished <<< insta360_ros_driver [0.23s]
+insta360_ros_driver  | 
+insta360_ros_driver  | Summary: 1 package finished [0.35s]
+insta360_ros_driver  | ================================
+insta360_ros_driver  |  Insta360 Docker Container Ready
+insta360_ros_driver  |  Run 'docker exec -it insta360_ros_driver bash'
+insta360_ros_driver  | ================================
+``` 
+
+in the build log, you can detach with 'd' and enter the container via:
+
+```
+docker exec -it insta360_ros_driver bash
+ros2 run rmw_zenoh_cpp rmw_zenohd
+```
+
+Then in another terminal, run:
+```
+docker exec -it insta360_ros_driver bash
+ros2 launch insta360_ros_driver bringup.launch.xml
+```
+
+This will start the camera. You can use rqt in a third terminal to view the image
+
+```
+docker exec -it insta360_ros_driver bash
+ros2 run rqt_image_view rqt_image_view
+```
+
+If you know how to use [tmux](https://github.com/tmux/tmux/wiki), the container also installs it and makes it easier to create multiple windows.
+
+The topics can also be accessed from host if you install Zenoh RMW on host. Tutorials are available [here](https://docs.ros.org/en/humble/Installation/RMW-Implementations/Non-DDS-Implementations/Working-with-Zenoh.html). In general Zenoh is very good for high bandwidth data and is the recommendation for this.
+
 ## Usage
-The camera provides images natively in H264 compressed image format. We have a decoder node that 
+The camera provides images natively in H264 compressed image format. We have a decoder node that converts the images into normal image format.
 
 ### Camera Bringup
 The camera can be brought up with the following launch file
@@ -91,7 +150,7 @@ This uses the [imu_filter_madgwick](https://wiki.ros.org/imu_filter_madgwick) pa
 
 ![IMU](https://github.com/user-attachments/assets/02b50cad-8415-4dde-9014-9ab3a4d415b9)
 
-## Equirectangular Calibration
+## Equirectangular Calibration (experimental)
 You can adjust the extrinsic parameters used to improve the equirectangular image. 
 ```
 # Run the camera driver
@@ -123,9 +182,9 @@ equirectangular_node:
 ==================================================
 ```
 
-Note that decode.py will most likely drop frames depending on your system. If you do not care about live processing, you can simply record the `/dual_fisheye/image/compressed` topic and decompress it later after recording.
+Note that the decoder will most likely drop frames depending on your system. If you do not care about live processing, you can simply record the `/dual_fisheye/image/compressed` topic and decompress it later after recording.
 ```
-ros2 bag record /dual_fisheye/image /imu/data_raw
+ros2 bag record /dual_fisheye/image/compressed /imu/data_raw
 ```
 
 ## Star History

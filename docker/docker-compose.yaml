@@ -1,0 +1,20 @@
+services:
+  insta360_ros_driver:
+    image: insta360_ros_driver
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: insta360_ros_driver
+    network_mode: host
+    privileged: true
+    environment:
+      DISPLAY: ${DISPLAY}
+    volumes: 
+    - /tmp/.X11-unix:/tmp/.X11-unix
+    - ../../insta360_ros_driver:/workspace/ros2_ws/src/insta360_ros_driver
+    - /dev:/dev
+    - /run/udev:/run/udev:ro
+    stdin_open: true
+    tty: true
+
+  
