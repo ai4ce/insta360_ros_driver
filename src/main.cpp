@@ -25,7 +25,7 @@ public:
         // Publisher for the compressed H.264 video stream
         compressed_pub_ = node_->create_publisher<sensor_msgs::msg::CompressedImage>(
             "/dual_fisheye/image/compressed", 
-            rclcpp::SensorDataQoS()
+            rclcpp::QoS(10)
         );
 
         // Publisher for IMU data (remains the same)
@@ -131,13 +131,15 @@ public:
         metadata->header.frame_id = "camera_frame";
         metadata->camera_name = preview.camera_name;
         metadata->decode_type = preview.encode_type == ins_camera::VideoEncodeType::H265 ? "h265" : "h264";
-        metadata->crop_src_width = preview.crop_info.src_width;
-        metadata->crop_src_height = preview.crop_info.src_height;
-        metadata->crop_dst_width = preview.crop_info.dst_width;
-        metadata->crop_dst_height = preview.crop_info.dst_height;
-        metadata->crop_offset_x = preview.crop_info.crop_offset_x;
-        metadata->crop_offset_y = preview.crop_info.crop_offset_y;
-        metadata->camera_offset = preview.offset;
+        metadata->crop_src_width = preview.GetCropSrcWidth();
+        metadata->crop_src_height = preview.GetCropSrcHeight();
+        metadata->crop_dst_width = preview.GetCropDstWidth();
+        metadata->crop_dst_height = preview.GetCropDstHeight();
+        metadata->crop_offset_x = preview.GetCropOffsetX();
+        metadata->crop_offset_y = preview.GetCropOffsetY();
+        for (size_t i = 0; i < preview.GetCalibrationCount(); ++i) {
+            metadata->camera_offset.push_back(preview.GetCalibration(i));
+        }
         metadata_pub_->publish(std::move(metadata));
         RCLCPP_INFO(node_->get_logger(), "Published camera preview metadata for %s", preview.camera_name.c_str());
         discovery.FreeDeviceDescriptors(list);

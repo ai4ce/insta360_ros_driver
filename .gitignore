@@ -3,6 +3,7 @@ image_capture/*
 lib/*
 include/camera/*
 include/stream/*
+include/media_sdk/*
 .vscode
 *.pyc
 

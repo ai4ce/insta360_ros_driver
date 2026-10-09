@@ -1,10 +1,10 @@
 #include <ins_realtime_stitcher.h>
+#include <ins_stitcher.h>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/imu.hpp>
-#include <cv_bridge/cv_bridge.h>
 #include "insta360_ros_driver/msg/camera_preview_info.hpp"
 
 #include <algorithm>
@@ -32,6 +32,7 @@ public:
         declare_parameter("enable_defringe", false);
 
         ins::InitEnv();
+        ins::SetModelFileRootDir(MEDIA_SDK_MODEL_DIR);
         ins::SetLogLevel(ins::InsLogLevel::WARNING);
         stitcher_ = std::make_shared<ins::RealTimeStitcher>();
 
@@ -82,13 +83,11 @@ private:
         const auto decode_type = preview.decode_type;
         camera_info.decode_type = decode_type == "h265"
             ? ins::VideoDecodeType::kH265 : ins::VideoDecodeType::kH264;
-        camera_info.offset = preview.camera_offset;
-        camera_info.window_crop_info_.src_width = preview.crop_src_width;
-        camera_info.window_crop_info_.src_height = preview.crop_src_height;
-        camera_info.window_crop_info_.dst_width = preview.crop_dst_width;
-        camera_info.window_crop_info_.dst_height = preview.crop_dst_height;
-        camera_info.window_crop_info_.crop_offset_x = preview.crop_offset_x;
-        camera_info.window_crop_info_.crop_offset_y = preview.crop_offset_y;
+        camera_info.SetCalibration(
+            preview.camera_offset,
+            preview.crop_src_width, preview.crop_src_height,
+            preview.crop_dst_width, preview.crop_dst_height,
+            preview.crop_offset_x, preview.crop_offset_y);
         stitcher_->SetCameraInfo(camera_info);
 
         const auto stitch_type = get_parameter("stitch_type").as_string();
@@ -130,9 +129,11 @@ private:
                                  "Expected h264/h265 input, got '%s'", msg->format.c_str());
             return;
         }
+        // MediaSDK silently drops packets unless the stream type is one of the camera's
+        // own values: 0x20 is a single stream carrying both lenses, which is what the
+        // driver publishes (0x21/0x22 are the two halves of a dual-stream camera).
         stitcher_->HandleVideoData(
-            msg->data.data(), msg->data.size(), stamp_to_us(msg->header.stamp),
-            msg->format == "h265" ? 1 : 0, 0);
+            msg->data.data(), msg->data.size(), stamp_to_us(msg->header.stamp), 0x20, 0);
     }
 
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
@@ -158,15 +159,19 @@ private:
             return;
         }
         std::lock_guard<std::mutex> lock(publish_mutex_);
-        const auto encoding = format == 0 ? "rgba8" : "bgra8";
-        cv::Mat image(height, width, CV_8UC4, data[0], linesize[0]);
-        cv_bridge::CvImage output;
+        sensor_msgs::msg::Image output;
         output.header.stamp.sec = static_cast<int32_t>(timestamp / 1000000);
         output.header.stamp.nanosec = static_cast<uint32_t>((timestamp % 1000000) * 1000);
         output.header.frame_id = "camera_frame";
-        output.encoding = encoding;
-        output.image = image.clone();
-        output_pub_->publish(*output.toImageMsg());
+        output.height = height;
+        output.width = width;
+        output.encoding = format == 0 ? "rgba8" : "bgra8";
+        output.step = width * 4;
+        output.data.resize(output.step * height);
+        for (int row = 0; row < height; ++row) {
+            std::memcpy(&output.data[row * output.step], data[0] + row * linesize[0], output.step);
+        }
+        output_pub_->publish(output);
     }
 
     std::shared_ptr<ins::RealTimeStitcher> stitcher_;

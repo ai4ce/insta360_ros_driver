@@ -7,8 +7,12 @@ services:
     container_name: insta360_ros_driver
     network_mode: host
     privileged: true
+    # GPU is opt-in: DOCKER_RUNTIME=nvidia docker compose up
+    runtime: ${DOCKER_RUNTIME:-runc}
     environment:
       DISPLAY: ${DISPLAY}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
     volumes: 
     - /tmp/.X11-unix:/tmp/.X11-unix
     - ../../insta360_ros_driver:/workspace/ros2_ws/src/insta360_ros_driver

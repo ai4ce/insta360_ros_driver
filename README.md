@@ -1,8 +1,3 @@
-# CHANGES OF THIS FORK
-- Dynamic parameters change works correctly
-- Equirectangular node is now more efficient
-- Perspective node have been added. You can control fov through parameters and camera orientation by publishing to: /&#8288;camera_orientation/&#8288;quaternion
-
 # insta360_ros_driver
 
 A ROS driver for the Insta360 cameras. This driver is tested on Ubuntu 22.04 with ROS2 Humble. The driver has also been verified on the Insta360 X2 and X3 cameras. The following resolutions are available, all at 30 FPS.
@@ -137,136 +132,106 @@ A dual fisheye image will be published.
 ![dual_fisheye](docs/dual_fisheye.png)
 
 #### Published Topics
-- /dual_fisheye/image
 - /dual_fisheye/image/compressed
-- /equirectangular/image
-- /imu/data
+- /dual_fisheye/image (with `decoder`)
+- /equirectangular/image (with `dual_fisheye2equirectangular`)
+- /perspective/image (with `dual_fisheye2perspective` or `equirectangular2perspective`)
 - /imu/data_raw
-
-#### MediaSDK Realtime Stitching
-
-The MediaSDK package contains `ins::RealTimeStitcher`, which accepts the
-camera's H.264/H.265 access units and IMU data and returns stitched frames. The
-package is contained in the SDK that you have to apply for on the [Insta360 website](https://www.insta360.com/sdk/home).
-
-Place the supplied Debian package at this exact path in the ROS package:
-
-```bash
-lib/libMediaSDK-dev-3.1.1.0-20250922_191110-amd64.deb
-```
-
-The default CMake configuration extracts this package into the build directory
-automatically; no system-wide installation is required. Rebuild after adding or
-replacing the package file. To use an SDK installed somewhere else instead, set
-its prefix explicitly:
-
-
-```bash
-colcon build --symlink-install --cmake-args \
-  -DINSTA360_MEDIA_SDK_ROOT=/path/to/MediaSDK/prefix
-```
-Then run the camera and the MediaSDK node. The node consumes the topics produced by
-`main.cpp` and publishes a stitched equirectangular image:
-
-```bash
-ros2 run insta360_ros_driver insta360_ros_driver
-ros2 run insta360_ros_driver media_sdk_stitcher --ros-args \
-  --params-file config/media_sdk_stitcher.yaml
-```
-
-The default node uses `dynamicstitch`; `template`, `optflow`, and `aistitch` are
-also accepted. Camera-specific values are read automatically from
-`CameraSDK::GetPreviewParam()` by `main.cpp` and published on the reliable,
-transient-local `/insta360/camera_preview_info` topic. The MediaSDK runtime model files
-are installed by the Debian package. For CUDA/model failures, try
-`stitch_type: template` first.
-
-
+- /imu/data (with `imu_filter`)
 
 The launch file has the following optional arguments:
-- `webcam_equirectangular` is a separate node for cameras switched to webcam/UVC mode.
+- decoder (default="true")
 
-When the camera exposes a stitched 2:1 webcam mode, list the available V4L2
-devices and formats:
+  This decodes the H264 stream into `/dual_fisheye/image` using FFmpeg. The node is named `ffmpeg_decoder` (previously `decoder`). Set this to `false` to publish only the compressed topic.
 
-```bash
+- dual_fisheye2equirectangular (default="false")
+
+  This publishes equirectangular images (previously the `equirectangular` argument). You can configure these parameters in `config/dual_fisheye2equirectangular.yaml`, and they can be changed while the node is running. Note that `crop_size` is now the number of pixels removed from the image height (`0` means no crop), not the size of the crop.
+
+  ![equirectangular](docs/equirectangular.png)
+
+- dual_fisheye2perspective (default="false") and equirectangular2perspective (default="false")
+
+  These publish a perspective view on `/perspective/image`, computed from the dual fisheye image or from the equirectangular image respectively. The field of view is set in `config/dual_fisheye2perspective.yaml` and `config/equirectangular2perspective.yaml`. The viewing direction is controlled by publishing a `geometry_msgs/Quaternion` to `/camera_orientation/quaternion`.
+
+- imu_filter (default="true")
+
+  This uses the [imu_filter_madgwick](https://wiki.ros.org/imu_filter_madgwick) package to approximate orientation from the IMU. Note that by default, we publish `/imu/data_raw` which only contains linear acceleration and angular velocity. The madgwick filter uses this information to publish orientation to `/imu/data`. You can configure the filter in `config/imu_filter.yaml`.
+
+  ![IMU](https://github.com/user-attachments/assets/02b50cad-8415-4dde-9014-9ab3a4d415b9)
+
+### MediaSDK Realtime Stitching (optional)
+
+The `media_sdk_stitcher` node stitches with Insta360's own MediaSDK (`ins::RealTimeStitcher`) instead of the projection node above. It is only built when the MediaSDK is found; otherwise it is skipped and the rest of the driver builds as usual. The MediaSDK comes in the same SDK download as the CameraSDK and is only available for x86_64.
+
+1. Copy the MediaSDK header files (the `include/*.h` files in the MediaSDK archive) into `include/media_sdk`.
+2. Install the MediaSDK runtime package. With Docker, place `MediaSDK-<version>-linux-amd64.deb` in the `lib` directory and it is installed when the image is built. On host, run:
+   ```
+   sudo apt install ./MediaSDK-<version>-linux-amd64.deb
+   ```
+3. Rebuild, then run the camera and the stitcher:
+   ```
+   ros2 run insta360_ros_driver insta360_ros_driver
+   ros2 run insta360_ros_driver media_sdk_stitcher --ros-args --params-file config/media_sdk_stitcher.yaml
+   ```
+
+The node subscribes to `/dual_fisheye/image/compressed` and `/imu/data_raw` and publishes `/equirectangular/image`. The camera-specific calibration is read by the driver and published on `/insta360/camera_preview_info`. `stitch_type` accepts `template`, `optflow`, `dynamicstitch` (default) and `aistitch`. For CUDA/model failures, try `stitch_type: template` first.
+
+A GPU is recommended for stitching. To pass an NVIDIA GPU into the Docker container (this needs the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)), start it with:
+```
+DOCKER_RUNTIME=nvidia docker compose up --build
+```
+
+### Webcam Mode
+
+`webcam_equirectangular` is a separate node for cameras switched to webcam/UVC mode. When the camera exposes a stitched 2:1 webcam mode, list the available V4L2 devices and formats:
+
+```
 v4l2-ctl --list-devices
 v4l2-ctl --list-formats-ext -d /dev/video0
 ```
 
 Run the node with the matching device:
 
-```bash
-ros2 run insta360_ros_driver webcam_equirectangular --ros-args \
-  --params-file config/webcam_equirectangular.yaml
+```
+ros2 run insta360_ros_driver webcam_equirectangular --ros-args --params-file config/webcam_equirectangular.yaml
 ```
 
-It requests `1920x960`, validates the returned frame is 2:1, converts it to
-`rgb8`, and publishes `/equirectangular/image` as a raw ROS 2 image. Webcam/UVC
-mode is controlled by Linux and the camera firmware, not by CameraSDK.
+It requests `1920x960`, validates the returned frame is 2:1, converts it to `rgb8`, and publishes `/equirectangular/image` as a raw ROS 2 image. Webcam/UVC mode is controlled by Linux and the camera firmware, not by CameraSDK.
 
-- equirectangular (default="false")
+### GStreamer Nodes
 
-This publishes equirectangular images. You can configure these parameters in `config/equirectangular.yaml`.
-![equirectangular](docs/equirectangular.png)
+The conversion nodes publish raw ROS images only. Encoding is handled by a separate node. GStreamer itself is installed by `rosdep`.
 
-#### GStreamer Nodes
-
-The conversion nodes publish raw ROS images only. Encoding is handled by a separate node:
-
-```bash
+```
 ros2 run insta360_ros_driver gstreamer_encoder --ros-args \
   -p input_topic:=/equirectangular/image \
   -p transport:=ros \
   -p output_topic:=/equirectangular/image/h264
 ```
 
+To decode an H.264 ROS topic back to a raw image topic:
+
+```
+ros2 run insta360_ros_driver gstreamer_decoder --ros-args \
+  -p compressed_topic:=/equirectangular/image/h264 \
+  -p image_topic:=/equirectangular/image/decoded
+```
+
 For direct RTP/UDP output, use `transport:=udp` and set `pipeline`:
 
-```bash
+```
 ros2 run insta360_ros_driver gstreamer_encoder --ros-args \
   -p input_topic:=/equirectangular/image \
   -p transport:=udp \
   -p pipeline:="appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=4000 ! rtph264pay pt=96 ! udpsink host=192.168.1.50 port=5000"
 ```
 
-To decode an H.264 ROS topic back to a raw image topic:
+Receive the stream on the other machine with:
 
-```bash
-ros2 run insta360_ros_driver gstreamer_decoder --ros-args \
-  -p compressed_topic:=/equirectangular/image/h264 \
-  -p image_topic:=/equirectangular/image/decoded
 ```
-
-`dual_fisheye2equirectangular_cpp` is the supported ROS stitcher for the live dual-fisheye topic. The checked-in Insta360 SDK exposes camera-side `EnableInCameraStitching`, but does not expose a frame-level MediaSDK stitching API, so the package does not claim to perform MediaSDK stitching in a ROS node.
-
-The old FFmpeg decoder is explicitly named `ffmpeg_decoder`:
-
-```bash
-ros2 run insta360_ros_driver ffmpeg_decoder
-```
-
-Install GStreamer development/runtime packages:
-
-```bash
-sudo apt install libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-  gstreamer1.0-plugins-ugly gstreamer1.0-libav
-```
-
-Both machines must be able to discover each other through ROS 2 DDS and use the same `ROS_DOMAIN_ID`.
-
-For direct UDP mode, receive the stream with:
-
-```bash
 gst-launch-1.0 udpsrc port=5000 caps="application/x-rtp,media=video,encoding-name=H264,payload=96,clock-rate=90000" ! rtph264depay ! avdec_h264 ! videoconvert ! autovideosink
 ```
-
-- imu_filter (default="true")
-
-This uses the [imu_filter_madgwick](https://wiki.ros.org/imu_filter_madgwick) package to approximate orientation from the IMU. Note that by default, we publish `/imu/data_raw` which only contains linear acceleration and angular velocity. The madgwick filter uses this information to publish orientation to `/imu/data`. You can configure the filter in `config/imu_filter.yaml`. 
-
-![IMU](https://github.com/user-attachments/assets/02b50cad-8415-4dde-9014-9ab3a4d415b9)
 
 ## Equirectangular Calibration (experimental)
 You can adjust the extrinsic parameters used to improve the equirectangular image. 
@@ -274,21 +239,14 @@ You can adjust the extrinsic parameters used to improve the equirectangular imag
 # Run the camera driver
 ros2 run insta360_ros_driver insta360_ros_driver
 # Activate image decoding
-ros2 run insta360_ros_driver decoder
+ros2 run insta360_ros_driver ffmpeg_decoder
 # Run the equirectangular node in calibration mode
 ros2 run insta360_ros_driver equirectangular.py --calibrate
 ```
 This will open an app to adjust the extrinsics. You can press 's' to get the parameters in YAML format. **Note that you need to press 'a' to update the image preview after changing the intrinsics with the GUI**
 ![Equirectangular Calibration](docs/calibration.png)
 
-Pressing 's' will return the parameters via the terminal. You can copy paste this onto the configuration file as needed. By default, the launch file reads this from `config/equirectangular.yaml`
-
-For the C++ projection node, use the separate client. It displays `/equirectangular/image` and updates the C++ node parameters through ROS:
-
-```bash
-ros2 run insta360_ros_driver calibrate_cpp.py \
-  --ros-args -p target_node:=dual_fisheye2equirectangular_node
-```
+Pressing 's' will return the parameters via the terminal.
 
 ```
 ==================================================
@@ -305,6 +263,14 @@ equirectangular_node:
     out_width: 1920
     out_height: 960
 ==================================================
+```
+
+The launch file reads the C++ node's parameters from `config/dual_fisheye2equirectangular.yaml`. When copying values there, keep that file's node name (`dual_fisheye2equirectangular_node`) and convert `crop_size`, since the C++ node expects the number of pixels removed (image height minus the value printed above).
+
+Alternatively, tune the running C++ node directly with the separate client. It displays `/equirectangular/image` and updates the node's parameters through ROS; use `ros2 param dump /dual_fisheye2equirectangular_node` to read the result.
+
+```
+ros2 run insta360_ros_driver calibrate_cpp.py
 ```
 
 Note that the decoder will most likely drop frames depending on your system. If you do not care about live processing, you can simply record the `/dual_fisheye/image/compressed` topic and decompress it later after recording.
