@@ -25,7 +25,7 @@ public:
         // Publisher for the compressed H.264 video stream
         compressed_pub_ = node_->create_publisher<sensor_msgs::msg::CompressedImage>(
             "/dual_fisheye/image/compressed", 
-            rclcpp::QoS(10)
+            rclcpp::SensorDataQoS()
         );
 
         // Publisher for IMU data (remains the same)
