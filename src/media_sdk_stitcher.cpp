@@ -132,6 +132,10 @@ private:
         // MediaSDK silently drops packets unless the stream type is one of the camera's
         // own values: 0x20 is a single stream carrying both lenses, which is what the
         // driver publishes (0x21/0x22 are the two halves of a dual-stream camera).
+        {
+            std::lock_guard<std::mutex> lock(publish_mutex_);
+            frame_id_ = msg->header.frame_id;
+        }
         stitcher_->HandleVideoData(
             msg->data.data(), msg->data.size(), stamp_to_us(msg->header.stamp), 0x20, 0);
     }
@@ -162,7 +166,7 @@ private:
         sensor_msgs::msg::Image output;
         output.header.stamp.sec = static_cast<int32_t>(timestamp / 1000000);
         output.header.stamp.nanosec = static_cast<uint32_t>((timestamp % 1000000) * 1000);
-        output.header.frame_id = "camera_frame";
+        output.header.frame_id = frame_id_;
         output.height = height;
         output.width = width;
         output.encoding = format == 0 ? "rgba8" : "bgra8";
@@ -181,6 +185,8 @@ private:
     rclcpp::Subscription<insta360_ros_driver::msg::CameraPreviewInfo>::SharedPtr metadata_sub_;
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr output_pub_;
     std::mutex publish_mutex_;
+    // frame_id of the latest input video packet, guarded by publish_mutex_.
+    std::string frame_id_;
 };
 
 int main(int argc, char** argv)

@@ -19,9 +19,14 @@ private:
     std::shared_ptr<rclcpp::Node> node_;
     rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_pub_;
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+    std::string camera_frame_id_;
+    std::string imu_frame_id_;
 
 public:
-    TestStreamDelegate(const std::shared_ptr<rclcpp::Node>& node) : node_(node) {
+    TestStreamDelegate(const std::shared_ptr<rclcpp::Node>& node,
+                       const std::string& camera_frame_id,
+                       const std::string& imu_frame_id)
+        : node_(node), camera_frame_id_(camera_frame_id), imu_frame_id_(imu_frame_id) {
         // Publisher for the compressed H.264 video stream
         compressed_pub_ = node_->create_publisher<sensor_msgs::msg::CompressedImage>(
             "/dual_fisheye/image/compressed", 
@@ -44,7 +49,7 @@ public:
 
             // Set the header
             msg->header.stamp = node_->get_clock()->now();
-            msg->header.frame_id = "camera_frame";
+            msg->header.frame_id = camera_frame_id_;
 
             // Set the format to H.264
             // The subscriber will need to know this to select the correct decoder.
@@ -61,7 +66,7 @@ public:
         for (const auto& gyro : data) {
             auto msg = std::make_unique<sensor_msgs::msg::Imu>();
             msg->header.stamp = node_->get_clock()->now();
-            msg->header.frame_id = "imu_frame";
+            msg->header.frame_id = imu_frame_id_;
             msg->angular_velocity.x = gyro.gx;
             msg->angular_velocity.y = gyro.gy;
             msg->angular_velocity.z = gyro.gz;
@@ -104,6 +109,11 @@ public:
     }
 
     int run_camera() {
+        const std::string camera_frame_id =
+            node_->declare_parameter<std::string>("camera_frame_id", "camera_frame");
+        const std::string imu_frame_id =
+            node_->declare_parameter<std::string>("imu_frame_id", "imu_frame");
+
         ins_camera::DeviceDiscovery discovery;
 
         rclcpp::QoS metadata_qos(1);
@@ -128,7 +138,7 @@ public:
 
         auto metadata = std::make_unique<insta360_ros_driver::msg::CameraPreviewInfo>();
         metadata->header.stamp = node_->get_clock()->now();
-        metadata->header.frame_id = "camera_frame";
+        metadata->header.frame_id = camera_frame_id;
         metadata->camera_name = preview.camera_name;
         metadata->decode_type = preview.encode_type == ins_camera::VideoEncodeType::H265 ? "h265" : "h264";
         metadata->crop_src_width = preview.GetCropSrcWidth();
@@ -144,7 +154,8 @@ public:
         RCLCPP_INFO(node_->get_logger(), "Published camera preview metadata for %s", preview.camera_name.c_str());
         discovery.FreeDeviceDescriptors(list);
 
-        std::shared_ptr<ins_camera::StreamDelegate> delegate = std::make_shared<TestStreamDelegate>(node_);
+        std::shared_ptr<ins_camera::StreamDelegate> delegate =
+            std::make_shared<TestStreamDelegate>(node_, camera_frame_id, imu_frame_id);
         cam->SetStreamDelegate(delegate);
 
         auto start = time(NULL);

@@ -6,3 +6,4 @@ webcam_equirectangular:
     fps: 30.0
     topic: /equirectangular/image
     pixel_format: MJPG
+    frame_id: camera_frame

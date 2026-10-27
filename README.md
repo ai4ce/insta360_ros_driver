@@ -160,6 +160,10 @@ The launch file has the following optional arguments:
 
   ![IMU](https://github.com/user-attachments/assets/02b50cad-8415-4dde-9014-9ab3a4d415b9)
 
+- camera_frame_id (default="camera_frame") and imu_frame_id (default="imu_frame")
+
+  The `header.frame_id` set by the camera driver on the compressed images and `/insta360/camera_preview_info`, and on `/imu/data_raw`, respectively. Downstream nodes keep the frame_id of their input image, so `/dual_fisheye/image`, `/equirectangular/image` and `/perspective/image` follow `camera_frame_id`. Set them to match the link names in your robot description, e.g. `camera_frame_id:=insta360_camera_link`.
+
 ### MediaSDK Realtime Stitching (optional)
 
 The `media_sdk_stitcher` node stitches with Insta360's own MediaSDK (`ins::RealTimeStitcher`) instead of the projection node above. It is only built when the MediaSDK is found; otherwise it is skipped and the rest of the driver builds as usual. The MediaSDK comes in the same SDK download as the CameraSDK and is only available for x86_64.
@@ -197,7 +201,7 @@ Run the node with the matching device:
 ros2 run insta360_ros_driver webcam_equirectangular --ros-args --params-file config/webcam_equirectangular.yaml
 ```
 
-It requests `1920x960`, validates the returned frame is 2:1, converts it to `rgb8`, and publishes `/equirectangular/image` as a raw ROS 2 image. Webcam/UVC mode is controlled by Linux and the camera firmware, not by CameraSDK.
+It requests `1920x960`, validates the returned frame is 2:1, converts it to `rgb8`, and publishes `/equirectangular/image` as a raw ROS 2 image with the `frame_id` parameter (default `camera_frame`) as its `header.frame_id`. Webcam/UVC mode is controlled by Linux and the camera firmware, not by CameraSDK.
 
 ### GStreamer Nodes
 

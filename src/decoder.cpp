@@ -5,6 +5,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <tuple>
+#include <utility>
 
 #include <opencv2/opencv.hpp>
 
@@ -49,7 +51,9 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher_;
 
     std::thread publisher_thread_;
-    std::queue<cv::Mat> frame_publish_queue_;
+    // Each decoded frame keeps the frame_id of the compressed packet it came from.
+    std::queue<std::pair<cv::Mat, std::string>> frame_publish_queue_;
+    std::string current_frame_id_;
     std::mutex queue_mutex_;
     std::condition_variable queue_cv_;
     std::atomic<bool> stop_publisher_thread_{false};
@@ -136,6 +140,7 @@ private:
     void PublisherThreadLoop() {
         while (!stop_publisher_thread_) {
             cv::Mat frame_to_publish;
+            std::string frame_id;
             {
                 std::unique_lock<std::mutex> lock(queue_mutex_);
                 queue_cv_.wait(lock, [this] {
@@ -148,7 +153,7 @@ private:
                 if (frame_publish_queue_.empty()) {
                     continue;
                 }
-                frame_to_publish = frame_publish_queue_.front();
+                std::tie(frame_to_publish, frame_id) = std::move(frame_publish_queue_.front());
                 frame_publish_queue_.pop();
             }
 
@@ -156,7 +161,7 @@ private:
                 auto img_msg = std::make_unique<sensor_msgs::msg::Image>();
                 std_msgs::msg::Header header;
                 header.stamp = this->get_clock()->now();
-                header.frame_id = "camera_frame";
+                header.frame_id = frame_id;
                 cv_bridge::CvImage cv_image(header, sensor_msgs::image_encodings::BGR8, frame_to_publish);
                 cv_image.toImageMsg(*img_msg);
                 publisher_->publish(std::move(img_msg));
@@ -224,7 +229,7 @@ private:
                     {
                         std::lock_guard<std::mutex> lock(queue_mutex_);
                         if (frame_publish_queue_.size() < max_queue_size_) {
-                            frame_publish_queue_.push(frame_copy);
+                            frame_publish_queue_.emplace(frame_copy, current_frame_id_);
                         }
                     }
                     queue_cv_.notify_one();
@@ -279,6 +284,8 @@ private:
         if (!codec_ctx_ || !parser_ctx_ || !pkt_ || !hw_frame_) {
             return;
         }
+
+        current_frame_id_ = msg->header.frame_id;
 
         const uint8_t* cur_data = msg->data.data();
         size_t remaining_size = msg->data.size();

@@ -9,8 +9,13 @@
     <arg name="dual_fisheye2perspective_config" default="$(find-pkg-share insta360_ros_driver)/config/dual_fisheye2perspective.yaml"/>
     <arg name="equirectangular2perspective_config" default="$(find-pkg-share insta360_ros_driver)/config/equirectangular2perspective.yaml"/>
     <arg name="imu_config" default="$(find-pkg-share insta360_ros_driver)/config/imu_filter.yaml"/>
+    <arg name="camera_frame_id" default="camera_frame"/>
+    <arg name="imu_frame_id" default="imu_frame"/>
     <!-- Publishes Compressed Images -->
-    <node pkg="insta360_ros_driver" exec="insta360_ros_driver" name="insta360_ros_driver" output="log"/>
+    <node pkg="insta360_ros_driver" exec="insta360_ros_driver" name="insta360_ros_driver" output="log">
+        <param name="camera_frame_id" value="$(var camera_frame_id)"/>
+        <param name="imu_frame_id" value="$(var imu_frame_id)"/>
+    </node>
 
     <!-- Decodes Compressed Images -->
     <node pkg="insta360_ros_driver" exec="ffmpeg_decoder" name="ffmpeg_decoder" output="log" if="$(var decoder)">

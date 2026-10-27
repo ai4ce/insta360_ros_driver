@@ -23,6 +23,7 @@ public:
         declare_parameter("fps", 30.0);
         declare_parameter("topic", "/equirectangular/image");
         declare_parameter("pixel_format", "MJPG");
+        declare_parameter("frame_id", "camera_frame");
 
         device_ = get_parameter("device").as_string();
         width_ = get_parameter("width").as_int();
@@ -30,6 +31,7 @@ public:
         fps_ = get_parameter("fps").as_double();
         topic_ = get_parameter("topic").as_string();
         pixel_format_ = get_parameter("pixel_format").as_string();
+        frame_id_ = get_parameter("frame_id").as_string();
 
         if (width_ <= 0 || height_ <= 0 || fps_ <= 0.0 ||
             std::abs(static_cast<double>(width_) / height_ - 2.0) > 0.01) {
@@ -95,7 +97,7 @@ private:
 
         cv_bridge::CvImage message;
         message.header.stamp = now();
-        message.header.frame_id = "camera_frame";
+        message.header.frame_id = frame_id_;
         message.encoding = "rgb8";
         message.image = rgb;
         publisher_->publish(*message.toImageMsg());
@@ -104,6 +106,7 @@ private:
     std::string device_;
     std::string topic_;
     std::string pixel_format_;
+    std::string frame_id_;
     int width_;
     int height_;
     double fps_;
