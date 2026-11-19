@@ -106,6 +106,11 @@ private:
             codec_ctx_->get_format = get_hw_format;
         }
 
+        // Let libavcodec decode on all cores (frame and slice threading). Without this the
+        // software decoder runs single-threaded and cannot keep up with 2560x1280 on small boards.
+        codec_ctx_->thread_count = 0;
+        codec_ctx_->thread_type = FF_THREAD_FRAME | FF_THREAD_SLICE;
+
         if (avcodec_open2(codec_ctx_, codec_, nullptr) < 0) {
             RCLCPP_ERROR(this->get_logger(), "Failed to open codec");
             CleanupFFmpegDecoder();
@@ -202,7 +207,13 @@ private:
                 bgr_frame_.create(frame_to_display->height, frame_to_display->width, CV_8UC3);
             }
 
-            if (sws_ctx_ && !bgr_frame_.empty()) {
+            // Decide on skipping before the colour conversion, so skipped frames are only decoded.
+            bool should_publish = true;
+            if (skip_frame_ > 0 && !i_frame_only_) {
+                should_publish = (frame_counter_++ % (skip_frame_ + 1) == 0);
+            }
+
+            if (should_publish && sws_ctx_ && !bgr_frame_.empty()) {
                 uint8_t* dst_data[4] = { bgr_frame_.data, nullptr, nullptr, nullptr };
                 int dst_linesize[4] = { static_cast<int>(bgr_frame_.step[0]), 0, 0, 0 };
 
@@ -211,15 +222,7 @@ private:
                             0, frame_to_display->height,
                             dst_data, dst_linesize);
 
-                // Apply frame skipping after decoding
-                bool should_publish = true;
-                
-                if (skip_frame_ > 0 && !i_frame_only_) {
-                    // Skip frame logic (only when not in i_frame_only mode)
-                    should_publish = (frame_counter_++ % (skip_frame_ + 1) == 0);
-                }
-                
-                if (should_publish) {
+                {
                     cv::Mat frame_copy = bgr_frame_.clone();
                     {
                         std::lock_guard<std::mutex> lock(queue_mutex_);
