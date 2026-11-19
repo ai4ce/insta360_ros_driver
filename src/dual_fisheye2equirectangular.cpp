@@ -258,7 +258,7 @@ void DualFisheye2EquirectangularNode::initMapping(int img_height, int img_width)
             // Where is this pixel in the ACTUAL raw dual-fisheye image?
             if (front_mask_.at<uchar>(y, x)) {
                 // Front is usually the right half of the raw image (check your camera!)
-                final_x = img_width + x_offset_crop + rot_u; 
+                final_x = img_width_ + x_offset_crop + rot_u;  // img_width_ is the full lens width; img_width is the cropped one
                 final_y = y_offset_crop + rot_v;
             } else {
                 // Back is the left half
