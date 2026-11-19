@@ -154,14 +154,26 @@ public:
 
         cam->SyncLocalTimeToCamera(utc_time,offset_time);       
         ins_camera::LiveStreamParam param;
-        param.video_resolution = ins_camera::VideoResolution::RES_1920_960P30; //Change this line to edit the resolution
+        // Stream resolution and bitrate are ROS parameters. Defaults match the previous hard-coded values.
+        const std::string res = node_->declare_parameter<std::string>("resolution", "1920x960");
+        const int kbps = node_->declare_parameter<int>("bitrate_kbps", 512);
+        if (res == "3840x1920") param.video_resolution = ins_camera::VideoResolution::RES_3840_1920P30;
+        else if (res == "2304x1152") param.video_resolution = ins_camera::VideoResolution::RES_1152_1152P30;
+        else if (res == "2560x1280") param.video_resolution = ins_camera::VideoResolution::RES_2560_1280P30;
+        else {
+            if (res != "1920x960") {
+                RCLCPP_WARN(node_->get_logger(), "Unknown resolution %s, using 1920x960", res.c_str());
+            }
+            param.video_resolution = ins_camera::VideoResolution::RES_1920_960P30;
+        }
+        RCLCPP_INFO(node_->get_logger(), "Requesting stream %s at %d kbit/s", res.c_str(), kbps);
         //Possible resolutions (results may vary per model) are:
         //RES_3840_1920P30
         //RES_2560_1280P30
         //RES_1152_1152P30 (this will give 2304 x 1152 at 30 FPS)
         //RES_1920_960P30  
         param.lrv_video_resulution = ins_camera::VideoResolution::RES_1440_720P30;
-        param.video_bitrate = 1024 * 1024 / 2;
+        param.video_bitrate = kbps * 1024;  // some models (e.g. ONE X2) ignore this and pick their own rate
         param.enable_audio = false;
         param.using_lrv = false;
 
