@@ -182,6 +182,28 @@ A GPU is recommended for stitching. To pass an NVIDIA GPU into the Docker contai
 DOCKER_RUNTIME=nvidia docker compose up --build
 ```
 
+### Calibrated Stitching without MediaSDK (ARM)
+
+`calibrated_stitcher.py` stitches from the camera's own factory calibration and needs no MediaSDK, so it also runs on ARM boards (tested on a Raspberry Pi 5 with a ONE X2). It reads the omnidirectional lens model (xi, focal lengths, centres, lens angles and distortion for both lenses) that the driver publishes on `/insta360/camera_preview_info`, so no crop, centre or radius tuning is needed.
+
+```
+ros2 launch insta360_ros_driver bringup.launch.xml calibrated_stitcher:=true
+```
+
+It subscribes to `/dual_fisheye/image` (from `ffmpeg_decoder`) and publishes `/equirectangular/image`. In the overlap it matches exposure and feathers the seam; straight below the camera the seam is hard, which hides a pole or tripod in the blind gap between the lenses.
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `input_topic` | `/dual_fisheye/image` | Raw side-by-side frames (bgr8 or rgb8) |
+| `output_topic` | `/equirectangular/image` | Stitched output |
+| `out_width` | 1920 | Output width; height is half |
+| `blend_deg` | 5.0 | Width of the feathered seam, degrees |
+| `max_fps` | 0 | Stitch at most this often; 0 stitches every frame |
+| `rim` | [0.0, 0.0] | Optional extra angle near the rim, per lens [back, front]; lens guards may need ~0.1 |
+| `rot1` | [0.0, 0.0, 0.0] | Optional small extra rotation of the back lens, degrees about x, y, z |
+
+Run it instead of `dual_fisheye2equirectangular`, not alongside it: both publish `/equirectangular/image` by default.
+
 ### Webcam Mode
 
 `webcam_equirectangular` is a separate node for cameras switched to webcam/UVC mode. When the camera exposes a stitched 2:1 webcam mode, list the available V4L2 devices and formats:

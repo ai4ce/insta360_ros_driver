@@ -178,6 +178,7 @@ install(TARGETS
 )
 
 install(PROGRAMS
+  scripts/calibrated_stitcher.py
   scripts/equirectangular.py
   scripts/calibrate.py
   scripts/calibrate_cpp.py

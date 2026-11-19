@@ -2,6 +2,7 @@
 <launch>
     <arg name="decoder" default="true"/>
     <arg name="dual_fisheye2equirectangular" default="false"/>
+    <arg name="calibrated_stitcher" default="false"/>
     <arg name="dual_fisheye2perspective" default="false"/>
     <arg name="equirectangular2perspective" default="false"/>
     <arg name="imu_filter" default="true"/>
@@ -26,6 +27,8 @@
     <node if="$(var dual_fisheye2equirectangular)" pkg="insta360_ros_driver" exec="dual_fisheye2equirectangular_cpp" name="dual_fisheye2equirectangular_node" output="screen">
         <param from="$(var dual_fisheye2equirectangular_config)" />
     </node>
+    <!-- Creates Equirectangular Images from the camera's factory calibration (no MediaSDK; runs on ARM) -->
+    <node if="$(var calibrated_stitcher)" pkg="insta360_ros_driver" exec="calibrated_stitcher.py" name="calibrated_stitcher" output="screen"/>
     <!-- Creates Perspective Images from dual-fisheye images -->
     <node if="$(var dual_fisheye2perspective)" pkg="insta360_ros_driver" exec="dual_fisheye2perspective_cpp" name="dual_fisheye2perspective_node" output="screen">
         <param from="$(var dual_fisheye2perspective_config)" />
